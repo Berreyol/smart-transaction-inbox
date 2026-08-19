@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { NavigationContainer } from "@react-navigation/native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { Pressable, StyleSheet, Text, View } from "react-native";
-import { ForwardingAddressModal } from "../components/ForwardingAddressModal";
+import { StyleSheet, View } from "react-native";
+import { AccountMenu } from "../components/AccountMenu";
 import { DashboardScreen } from "../screens/DashboardScreen";
 import { InboxScreen } from "../screens/InboxScreen";
 import { TransactionsScreen } from "../screens/TransactionsScreen";
@@ -15,25 +15,13 @@ const Tab = createBottomTabNavigator();
 
 function HeaderActions() {
   const userId = useAuthStore((state) => state.session?.user.id);
-  const signOut = useAuthStore((state) => state.signOut);
   const fetchProfile = useProfileStore((state) => state.fetchProfile);
-  const [addressVisible, setAddressVisible] = useState(false);
 
   useEffect(() => {
     if (userId) fetchProfile(userId);
   }, [userId, fetchProfile]);
 
-  return (
-    <View style={{ flexDirection: "row", alignItems: "center", marginRight: 16, gap: 16 }}>
-      <Pressable onPress={() => setAddressVisible(true)} hitSlop={12}>
-        <Ionicons name="at-outline" size={22} color="#4f46e5" />
-      </Pressable>
-      <Pressable onPress={signOut} hitSlop={12}>
-        <Text style={{ color: "#4f46e5", fontWeight: "600" }}>Sign Out</Text>
-      </Pressable>
-      <ForwardingAddressModal visible={addressVisible} onClose={() => setAddressVisible(false)} />
-    </View>
-  );
+  return <AccountMenu />;
 }
 
 function InboxTabIcon({ color, size }: { color: string; size: number }) {
