@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { FlatList, Modal, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
+import { FlatList, Modal, Pressable, RefreshControl, StyleSheet, Text, TextInput, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { CategoryPieChart } from "../components/CategoryPieChart";
 import { IncomeExpenseChart } from "../components/IncomeExpenseChart";
@@ -8,6 +8,7 @@ import { useAuthStore } from "../store/authStore";
 import { useCategoriesStore } from "../store/categoriesStore";
 import { useTransactionsStore } from "../store/transactionsStore";
 import type { Transaction, TransactionType } from "../types/database";
+import { DATE_PRESET_LABELS, resolveDateRange, type DatePreset } from "../utils/dateFilter";
 
 type ViewMode = "type" | "category";
 
@@ -48,6 +49,10 @@ export function DashboardScreen() {
   const subscribeCategories = useCategoriesStore((state) => state.subscribe);
   const [viewMode, setViewMode] = useState<ViewMode>("type");
   const [menuVisible, setMenuVisible] = useState(false);
+  const [datePreset, setDatePreset] = useState<DatePreset>("all");
+  const [customStart, setCustomStart] = useState("");
+  const [customEnd, setCustomEnd] = useState("");
+  const [dateMenuVisible, setDateMenuVisible] = useState(false);
 
   useEffect(() => {
     if (!userId) return;
@@ -61,8 +66,23 @@ export function DashboardScreen() {
     };
   }, [userId, fetchTransactions, subscribe, fetchCategories, subscribeCategories]);
 
+  const dateRange = useMemo(
+    () => resolveDateRange(datePreset, customStart, customEnd),
+    [datePreset, customStart, customEnd],
+  );
+
+  const filteredItems = useMemo(() => {
+    if (!dateRange.start && !dateRange.end) return items;
+    return items.filter((t) => {
+      const txnDate = new Date(t.date);
+      if (dateRange.start && txnDate < dateRange.start) return false;
+      if (dateRange.end && txnDate > dateRange.end) return false;
+      return true;
+    });
+  }, [items, dateRange]);
+
   const { totalIncome, totalExpenses } = useMemo(() => {
-    return items.reduce(
+    return filteredItems.reduce(
       (acc, tx) => {
         if (tx.type === "income") {
           acc.totalIncome += tx.amount;
@@ -73,11 +93,11 @@ export function DashboardScreen() {
       },
       { totalIncome: 0, totalExpenses: 0 },
     );
-  }, [items]);
+  }, [filteredItems]);
 
   const categoryTotals = useMemo<CategoryTotal[]>(() => {
     const map = new Map<string, CategoryTotal>();
-    for (const tx of items) {
+    for (const tx of filteredItems) {
       const key = `${tx.type}:${tx.category}`;
       const existing = map.get(key);
       if (existing) {
@@ -88,7 +108,7 @@ export function DashboardScreen() {
       }
     }
     return [...map.values()].sort((a, b) => b.total - a.total);
-  }, [items]);
+  }, [filteredItems]);
 
   const expenseTotals = useMemo(
     () => categoryTotals.filter((t) => t.type === "expense"),
@@ -121,20 +141,48 @@ export function DashboardScreen() {
 
   return (
     <View style={styles.container}>
-      <Pressable style={styles.viewSwitcher} onPress={() => setMenuVisible(true)}>
-        <Text style={styles.viewSwitcherText}>{VIEW_LABELS[viewMode]}</Text>
-        <Ionicons name="chevron-down" size={16} color="#4f46e5" />
-      </Pressable>
+      <View style={styles.toolbar}>
+        <Pressable style={styles.viewSwitcher} onPress={() => setMenuVisible(true)}>
+          <Text style={styles.viewSwitcherText}>{VIEW_LABELS[viewMode]}</Text>
+          <Ionicons name="chevron-down" size={16} color="#4f46e5" />
+        </Pressable>
+        <Pressable style={styles.iconButton} onPress={() => setDateMenuVisible(true)}>
+          <Ionicons name="calendar-outline" size={20} color="#4f46e5" />
+          {datePreset !== "all" && <View style={styles.iconBadge} />}
+        </Pressable>
+      </View>
+
+      {datePreset !== "all" && (
+        <View style={styles.activeFilterRow}>
+          <View style={styles.activeFilterChip}>
+            <Text style={styles.activeFilterText}>
+              {datePreset === "custom" && customStart && customEnd
+                ? `${customStart} – ${customEnd}`
+                : DATE_PRESET_LABELS[datePreset]}
+            </Text>
+            <Pressable
+              hitSlop={8}
+              onPress={() => {
+                setDatePreset("all");
+                setCustomStart("");
+                setCustomEnd("");
+              }}
+            >
+              <Ionicons name="close" size={14} color="#4f46e5" />
+            </Pressable>
+          </View>
+        </View>
+      )}
 
       {viewMode === "type" ? (
         <FlatList
           style={styles.list}
-          data={items}
+          data={filteredItems}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={items.length === 0 && styles.emptyContainer}
+          contentContainerStyle={filteredItems.length === 0 && styles.emptyContainer}
           refreshControl={refreshControl}
           ListHeaderComponent={
-            items.length > 0 ? (
+            filteredItems.length > 0 ? (
               <IncomeExpenseChart totalIncome={totalIncome} totalExpenses={totalExpenses} />
             ) : null
           }
@@ -169,6 +217,66 @@ export function DashboardScreen() {
           renderItem={({ item }) => <CategoryTotalRow total={item} />}
         />
       )}
+
+      <Modal
+        visible={dateMenuVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setDateMenuVisible(false)}
+      >
+        <Pressable style={styles.menuBackdrop} onPress={() => setDateMenuVisible(false)}>
+          <Pressable style={styles.menu} onPress={(e) => e.stopPropagation()}>
+            <Text style={styles.menuTitle}>Date</Text>
+            {(Object.keys(DATE_PRESET_LABELS) as DatePreset[])
+              .filter((option) => option !== "custom")
+              .map((option) => (
+                <Pressable
+                  key={option}
+                  style={styles.menuOption}
+                  onPress={() => {
+                    setDatePreset(option);
+                    setDateMenuVisible(false);
+                  }}
+                >
+                  <Text style={[styles.menuOptionText, datePreset === option && styles.menuOptionTextActive]}>
+                    {DATE_PRESET_LABELS[option]}
+                  </Text>
+                  {datePreset === option && <Ionicons name="checkmark" size={16} color="#4f46e5" />}
+                </Pressable>
+              ))}
+
+            <Pressable style={styles.menuOption} onPress={() => setDatePreset("custom")}>
+              <Text style={[styles.menuOptionText, datePreset === "custom" && styles.menuOptionTextActive]}>
+                Custom range
+              </Text>
+              {datePreset === "custom" && <Ionicons name="checkmark" size={16} color="#4f46e5" />}
+            </Pressable>
+
+            {datePreset === "custom" && (
+              <View style={styles.customDateRow}>
+                <TextInput
+                  style={styles.customDateInput}
+                  placeholder="YYYY-MM-DD"
+                  value={customStart}
+                  onChangeText={setCustomStart}
+                  autoCapitalize="none"
+                />
+                <Text style={styles.customDateSeparator}>to</Text>
+                <TextInput
+                  style={styles.customDateInput}
+                  placeholder="YYYY-MM-DD"
+                  value={customEnd}
+                  onChangeText={setCustomEnd}
+                  autoCapitalize="none"
+                />
+                <Pressable style={styles.customDateApply} onPress={() => setDateMenuVisible(false)}>
+                  <Text style={styles.customDateApplyText}>Apply</Text>
+                </Pressable>
+              </View>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       <Modal
         visible={menuVisible}
@@ -208,13 +316,18 @@ const styles = StyleSheet.create({
   list: {
     flex: 1,
   },
+  toolbar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginHorizontal: 16,
+    marginTop: 12,
+  },
   viewSwitcher: {
     flexDirection: "row",
     alignItems: "center",
     alignSelf: "flex-start",
     gap: 4,
-    marginHorizontal: 16,
-    marginTop: 12,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
@@ -223,6 +336,37 @@ const styles = StyleSheet.create({
   viewSwitcherText: {
     fontSize: 13,
     fontWeight: "700",
+    color: "#4f46e5",
+  },
+  iconButton: {
+    padding: 6,
+  },
+  iconBadge: {
+    position: "absolute",
+    top: 4,
+    right: 4,
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: "#4f46e5",
+  },
+  activeFilterRow: {
+    flexDirection: "row",
+    paddingHorizontal: 16,
+    paddingTop: 10,
+  },
+  activeFilterChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 14,
+    backgroundColor: "#eef2ff",
+  },
+  activeFilterText: {
+    fontSize: 13,
+    fontWeight: "600",
     color: "#4f46e5",
   },
   emptyContainer: {
@@ -303,6 +447,14 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     elevation: 4,
   },
+  menuTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#9ca3af",
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    paddingBottom: 4,
+  },
   menuOption: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -317,5 +469,37 @@ const styles = StyleSheet.create({
   menuOptionTextActive: {
     color: "#4f46e5",
     fontWeight: "600",
+  },
+  customDateRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    paddingBottom: 4,
+  },
+  customDateInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    fontSize: 13,
+  },
+  customDateSeparator: {
+    fontSize: 12,
+    color: "#9ca3af",
+  },
+  customDateApply: {
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 8,
+    backgroundColor: "#4f46e5",
+  },
+  customDateApplyText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#fff",
   },
 });
