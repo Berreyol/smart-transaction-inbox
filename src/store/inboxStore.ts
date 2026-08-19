@@ -17,7 +17,7 @@ interface InboxState {
   isLoading: boolean;
   error: string | null;
   fetchPending: (userId: string) => Promise<void>;
-  approve: (pendingId: string, category: string) => Promise<boolean>;
+  approve: (pendingId: string, category: string, accountId: string | null) => Promise<boolean>;
   reject: (pendingId: string) => Promise<boolean>;
   /** Subscribes to realtime changes on this user's pending queue. Returns an unsubscribe function. */
   subscribe: (userId: string) => () => void;
@@ -44,10 +44,11 @@ export const useInboxStore = create<InboxState>((set, get) => ({
     set({ items: data ?? [], isLoading: false });
   },
 
-  approve: async (pendingId: string, category: string) => {
+  approve: async (pendingId: string, category: string, accountId: string | null) => {
     const { error } = await supabase.rpc("approve_pending_transaction", {
       p_pending_id: pendingId,
       p_category: category,
+      p_account_id: accountId,
     });
 
     if (error) {

@@ -31,6 +31,7 @@ export function PendingTransactionCard({ item, onApprove, onReject }: Props) {
         )}
       </View>
 
+      {item.bank_name && <Text style={styles.bankName}>{item.bank_name}</Text>}
       {item.merchant && <Text style={styles.merchant}>{item.merchant}</Text>}
 
       <Text style={styles.snippet} numberOfLines={3}>
@@ -97,6 +98,13 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "600",
     color: "#111827",
+  },
+  bankName: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#4f46e5",
+    textTransform: "uppercase",
+    marginTop: 8,
   },
   merchant: {
     fontSize: 15,

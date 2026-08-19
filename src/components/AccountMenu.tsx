@@ -1,20 +1,38 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Linking, Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuthStore } from "../store/authStore";
+import { useBankAccountsStore } from "../store/bankAccountsStore";
+import { AccountsModal } from "./AccountsModal";
 import { ForwardingAddressModal } from "./ForwardingAddressModal";
 
 const LINKEDIN_URL = process.env.EXPO_PUBLIC_LINKEDIN_URL;
 const GITHUB_REPO_URL = process.env.EXPO_PUBLIC_GITHUB_REPO_URL;
 
 export function AccountMenu() {
+  const userId = useAuthStore((state) => state.session?.user.id);
   const signOut = useAuthStore((state) => state.signOut);
+  const fetchBankAccounts = useBankAccountsStore((state) => state.fetchBankAccounts);
+  const subscribeBankAccounts = useBankAccountsStore((state) => state.subscribe);
   const [menuVisible, setMenuVisible] = useState(false);
   const [addressVisible, setAddressVisible] = useState(false);
+  const [accountsVisible, setAccountsVisible] = useState(false);
+
+  useEffect(() => {
+    if (!userId) return;
+    fetchBankAccounts(userId);
+    const unsubscribe = subscribeBankAccounts(userId);
+    return unsubscribe;
+  }, [userId, fetchBankAccounts, subscribeBankAccounts]);
 
   const openForwardingAddress = () => {
     setMenuVisible(false);
     setAddressVisible(true);
+  };
+
+  const openAccounts = () => {
+    setMenuVisible(false);
+    setAccountsVisible(true);
   };
 
   const openLinkedIn = () => {
@@ -51,6 +69,11 @@ export function AccountMenu() {
               <Text style={styles.rowText}>Forwarding address</Text>
             </Pressable>
 
+            <Pressable style={styles.row} onPress={openAccounts}>
+              <Ionicons name="card-outline" size={20} color="#4f46e5" />
+              <Text style={styles.rowText}>Bank accounts</Text>
+            </Pressable>
+
             <View style={styles.divider} />
 
             <Text style={styles.sectionLabel}>About me</Text>
@@ -75,6 +98,7 @@ export function AccountMenu() {
       </Modal>
 
       <ForwardingAddressModal visible={addressVisible} onClose={() => setAddressVisible(false)} />
+      <AccountsModal visible={accountsVisible} onClose={() => setAccountsVisible(false)} />
     </View>
   );
 }

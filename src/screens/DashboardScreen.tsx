@@ -5,10 +5,13 @@ import { CategoryPieChart } from "../components/CategoryPieChart";
 import { IncomeExpenseChart } from "../components/IncomeExpenseChart";
 import { TransactionListItem } from "../components/TransactionListItem";
 import { useAuthStore } from "../store/authStore";
+import { useBankAccountsStore } from "../store/bankAccountsStore";
 import { useCategoriesStore } from "../store/categoriesStore";
 import { useTransactionsStore } from "../store/transactionsStore";
 import type { Transaction, TransactionType } from "../types/database";
 import { DATE_PRESET_LABELS, resolveDateRange, type DatePreset } from "../utils/dateFilter";
+
+type AccountFilter = "all" | string;
 
 type ViewMode = "type" | "category";
 
@@ -47,12 +50,17 @@ export function DashboardScreen() {
   const categories = useCategoriesStore((state) => state.items);
   const fetchCategories = useCategoriesStore((state) => state.fetchCategories);
   const subscribeCategories = useCategoriesStore((state) => state.subscribe);
+  const bankAccounts = useBankAccountsStore((state) => state.items);
+  const fetchBankAccounts = useBankAccountsStore((state) => state.fetchBankAccounts);
+  const subscribeBankAccounts = useBankAccountsStore((state) => state.subscribe);
   const [viewMode, setViewMode] = useState<ViewMode>("type");
   const [menuVisible, setMenuVisible] = useState(false);
   const [datePreset, setDatePreset] = useState<DatePreset>("all");
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
   const [dateMenuVisible, setDateMenuVisible] = useState(false);
+  const [accountFilter, setAccountFilter] = useState<AccountFilter>("all");
+  const [accountMenuVisible, setAccountMenuVisible] = useState(false);
 
   useEffect(() => {
     if (!userId) return;
@@ -60,11 +68,22 @@ export function DashboardScreen() {
     const unsubscribe = subscribe(userId);
     fetchCategories(userId);
     const unsubscribeCategories = subscribeCategories(userId);
+    fetchBankAccounts(userId);
+    const unsubscribeBankAccounts = subscribeBankAccounts(userId);
     return () => {
       unsubscribe();
       unsubscribeCategories();
+      unsubscribeBankAccounts();
     };
-  }, [userId, fetchTransactions, subscribe, fetchCategories, subscribeCategories]);
+  }, [
+    userId,
+    fetchTransactions,
+    subscribe,
+    fetchCategories,
+    subscribeCategories,
+    fetchBankAccounts,
+    subscribeBankAccounts,
+  ]);
 
   const dateRange = useMemo(
     () => resolveDateRange(datePreset, customStart, customEnd),
@@ -72,14 +91,16 @@ export function DashboardScreen() {
   );
 
   const filteredItems = useMemo(() => {
-    if (!dateRange.start && !dateRange.end) return items;
     return items.filter((t) => {
-      const txnDate = new Date(t.date);
-      if (dateRange.start && txnDate < dateRange.start) return false;
-      if (dateRange.end && txnDate > dateRange.end) return false;
+      if (accountFilter !== "all" && t.account_id !== accountFilter) return false;
+      if (dateRange.start || dateRange.end) {
+        const txnDate = new Date(t.date);
+        if (dateRange.start && txnDate < dateRange.start) return false;
+        if (dateRange.end && txnDate > dateRange.end) return false;
+      }
       return true;
     });
-  }, [items, dateRange]);
+  }, [items, accountFilter, dateRange]);
 
   const { totalIncome, totalExpenses } = useMemo(() => {
     return filteredItems.reduce(
@@ -128,6 +149,11 @@ export function DashboardScreen() {
     [categories],
   );
 
+  const selectedAccount = useMemo(
+    () => bankAccounts.find((a) => a.id === accountFilter) ?? null,
+    [bankAccounts, accountFilter],
+  );
+
   const refreshControl = (
     <RefreshControl refreshing={isLoading} onRefresh={() => userId && fetchTransactions(userId)} />
   );
@@ -150,27 +176,43 @@ export function DashboardScreen() {
           <Ionicons name="calendar-outline" size={20} color="#4f46e5" />
           {datePreset !== "all" && <View style={styles.iconBadge} />}
         </Pressable>
+        <Pressable style={styles.iconButton} onPress={() => setAccountMenuVisible(true)}>
+          <Ionicons name="card-outline" size={20} color="#4f46e5" />
+          {accountFilter !== "all" && <View style={styles.iconBadge} />}
+        </Pressable>
       </View>
 
-      {datePreset !== "all" && (
+      {(datePreset !== "all" || accountFilter !== "all") && (
         <View style={styles.activeFilterRow}>
-          <View style={styles.activeFilterChip}>
-            <Text style={styles.activeFilterText}>
-              {datePreset === "custom" && customStart && customEnd
-                ? `${customStart} – ${customEnd}`
-                : DATE_PRESET_LABELS[datePreset]}
-            </Text>
-            <Pressable
-              hitSlop={8}
-              onPress={() => {
-                setDatePreset("all");
-                setCustomStart("");
-                setCustomEnd("");
-              }}
-            >
-              <Ionicons name="close" size={14} color="#4f46e5" />
-            </Pressable>
-          </View>
+          {datePreset !== "all" && (
+            <View style={styles.activeFilterChip}>
+              <Text style={styles.activeFilterText}>
+                {datePreset === "custom" && customStart && customEnd
+                  ? `${customStart} – ${customEnd}`
+                  : DATE_PRESET_LABELS[datePreset]}
+              </Text>
+              <Pressable
+                hitSlop={8}
+                onPress={() => {
+                  setDatePreset("all");
+                  setCustomStart("");
+                  setCustomEnd("");
+                }}
+              >
+                <Ionicons name="close" size={14} color="#4f46e5" />
+              </Pressable>
+            </View>
+          )}
+          {accountFilter !== "all" && (
+            <View style={styles.activeFilterChip}>
+              <Text style={styles.activeFilterText}>
+                {selectedAccount ? `${selectedAccount.bank_name} — ${selectedAccount.account_alias}` : "Account"}
+              </Text>
+              <Pressable hitSlop={8} onPress={() => setAccountFilter("all")}>
+                <Ionicons name="close" size={14} color="#4f46e5" />
+              </Pressable>
+            </View>
+          )}
         </View>
       )}
 
@@ -217,6 +259,55 @@ export function DashboardScreen() {
           renderItem={({ item }) => <CategoryTotalRow total={item} />}
         />
       )}
+
+      <Modal
+        visible={accountMenuVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setAccountMenuVisible(false)}
+      >
+        <Pressable style={styles.menuBackdrop} onPress={() => setAccountMenuVisible(false)}>
+          <View style={styles.menu}>
+            <Text style={styles.menuTitle}>Account</Text>
+            <Pressable
+              style={styles.menuOption}
+              onPress={() => {
+                setAccountFilter("all");
+                setAccountMenuVisible(false);
+              }}
+            >
+              <Text style={[styles.menuOptionText, accountFilter === "all" && styles.menuOptionTextActive]}>
+                All accounts
+              </Text>
+              {accountFilter === "all" && <Ionicons name="checkmark" size={16} color="#4f46e5" />}
+            </Pressable>
+
+            {bankAccounts.length === 0 && (
+              <Text style={styles.emptyAccountsText}>No accounts yet — add one from the account menu.</Text>
+            )}
+            {bankAccounts.map((account) => (
+              <Pressable
+                key={account.id}
+                style={styles.menuOption}
+                onPress={() => {
+                  setAccountFilter(account.id);
+                  setAccountMenuVisible(false);
+                }}
+              >
+                <View>
+                  <Text
+                    style={[styles.menuOptionText, accountFilter === account.id && styles.menuOptionTextActive]}
+                  >
+                    {account.bank_name}
+                  </Text>
+                  <Text style={styles.menuOptionSubtext}>{account.account_alias}</Text>
+                </View>
+                {accountFilter === account.id && <Ionicons name="checkmark" size={16} color="#4f46e5" />}
+              </Pressable>
+            ))}
+          </View>
+        </Pressable>
+      </Modal>
 
       <Modal
         visible={dateMenuVisible}
@@ -352,6 +443,7 @@ const styles = StyleSheet.create({
   },
   activeFilterRow: {
     flexDirection: "row",
+    gap: 8,
     paddingHorizontal: 16,
     paddingTop: 10,
   },
@@ -469,6 +561,18 @@ const styles = StyleSheet.create({
   menuOptionTextActive: {
     color: "#4f46e5",
     fontWeight: "600",
+  },
+  menuOptionSubtext: {
+    fontSize: 12,
+    color: "#9ca3af",
+    marginTop: 2,
+  },
+  emptyAccountsText: {
+    fontSize: 13,
+    color: "#9ca3af",
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    maxWidth: 220,
   },
   customDateRow: {
     flexDirection: "row",

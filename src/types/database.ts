@@ -29,6 +29,7 @@ export type Transaction = {
   category: string;
   date: string;
   merchant: string | null;
+  account_id: string | null;
   created_at: string;
 };
 
@@ -38,6 +39,7 @@ export type PendingTransaction = {
   amount: number | null;
   type: TransactionType | null;
   merchant: string | null;
+  bank_name: string | null;
   raw_text: string;
   date: string;
   status: PendingStatus;
@@ -49,6 +51,14 @@ export type Category = {
   user_id: string;
   name: string;
   type: TransactionType;
+  created_at: string;
+};
+
+export type BankAccount = {
+  id: string;
+  user_id: string;
+  bank_name: string;
+  account_alias: string;
   created_at: string;
 };
 
@@ -88,11 +98,17 @@ export type Database = {
         Update: Partial<Category>;
         Relationships: [];
       };
+      bank_accounts: {
+        Row: BankAccount;
+        Insert: Partial<BankAccount> & Pick<BankAccount, "user_id" | "bank_name" | "account_alias">;
+        Update: Partial<BankAccount>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
       approve_pending_transaction: {
-        Args: { p_pending_id: string; p_category: string };
+        Args: { p_pending_id: string; p_category: string; p_account_id: string | null };
         Returns: Transaction;
       };
     };
