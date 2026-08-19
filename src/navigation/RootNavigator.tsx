@@ -1,20 +1,37 @@
+import { useEffect, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { NavigationContainer } from "@react-navigation/native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { Pressable, Text } from "react-native";
+import { Pressable, Text, View } from "react-native";
+import { ForwardingAddressModal } from "../components/ForwardingAddressModal";
 import { DashboardScreen } from "../screens/DashboardScreen";
 import { InboxScreen } from "../screens/InboxScreen";
 import { TransactionsScreen } from "../screens/TransactionsScreen";
 import { useAuthStore } from "../store/authStore";
+import { useProfileStore } from "../store/profileStore";
 
 const Tab = createBottomTabNavigator();
 
-function SignOutButton() {
+function HeaderActions() {
+  const userId = useAuthStore((state) => state.session?.user.id);
   const signOut = useAuthStore((state) => state.signOut);
+  const fetchProfile = useProfileStore((state) => state.fetchProfile);
+  const [addressVisible, setAddressVisible] = useState(false);
+
+  useEffect(() => {
+    if (userId) fetchProfile(userId);
+  }, [userId, fetchProfile]);
+
   return (
-    <Pressable onPress={signOut} hitSlop={12} style={{ marginRight: 16 }}>
-      <Text style={{ color: "#4f46e5", fontWeight: "600" }}>Sign Out</Text>
-    </Pressable>
+    <View style={{ flexDirection: "row", alignItems: "center", marginRight: 16, gap: 16 }}>
+      <Pressable onPress={() => setAddressVisible(true)} hitSlop={12}>
+        <Ionicons name="at-outline" size={22} color="#4f46e5" />
+      </Pressable>
+      <Pressable onPress={signOut} hitSlop={12}>
+        <Text style={{ color: "#4f46e5", fontWeight: "600" }}>Sign Out</Text>
+      </Pressable>
+      <ForwardingAddressModal visible={addressVisible} onClose={() => setAddressVisible(false)} />
+    </View>
   );
 }
 
@@ -23,7 +40,7 @@ export function RootNavigator() {
     <NavigationContainer>
       <Tab.Navigator
         screenOptions={{
-          headerRight: () => <SignOutButton />,
+          headerRight: () => <HeaderActions />,
           tabBarActiveTintColor: "#4f46e5",
         }}
       >

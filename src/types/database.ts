@@ -17,6 +17,7 @@ export type Profile = {
   id: string;
   email: string;
   expo_push_token: string | null;
+  forwarding_token: string;
   created_at: string;
 };
 

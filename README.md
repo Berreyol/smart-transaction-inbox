@@ -4,14 +4,14 @@ A personal finance app that turns forwarded bank emails into reviewable transact
 
 ## How it works (Method B: Sender Matching)
 
-Every user forwards their bank emails to **one global inbound address**. [Pipedream](https://pipedream.com)'s Email trigger catches inbound mail on that address, parses it, and a workflow step POSTs the parsed email as JSON to a Supabase Edge Function. The function figures out *which user* the email belongs to by matching the email's `From` address against a `profiles` table — not by parsing bank-specific templates or integrating with each bank individually.
+Every user forwards their bank emails to **one global inbound address**, personalized with a per-user `+tag` (e.g. `base+ab12cd34ef56@pipedream.net` — shown in-app via the "@" header button). [Pipedream](https://pipedream.com)'s Email trigger catches inbound mail on that address, parses it, and a workflow step POSTs the parsed email as JSON to a Supabase Edge Function. The function figures out *which user* the email belongs to by matching that `+tag` (each profile's `forwarding_token`) against a `profiles` table, falling back to the email's `From` address if no tag is present — not by parsing bank-specific templates or integrating with each bank individually.
 
 ```
 ┌──────────┐   forwards bank email   ┌──────────┐   HTTP POST step    ┌────────────────────┐
 │   User   │ ───────────────────────▶│Pipedream │────────────────────▶│  Edge Function      │
 │  (bank   │                         │ (Email   │                     │  parse-email        │
 │  email)  │                         │ trigger) │                     │                      │
-└──────────┘                         └──────────┘                     │ 1. From → profiles   │
+└──────────┘                         └──────────┘                     │ 1. to+tag → profiles │
                                                                        │ 2. regex → amount/    │
                                                                        │    type/merchant      │
                                                                        │ 3. insert pending_    │
@@ -37,9 +37,14 @@ Every user forwards their bank emails to **one global inbound address**. [Pipedr
                                                                      └────────────────────────┘
 ```
 
-### Why matching by sender, not parsing bank identity
+### Why matching by a forwarding token, not just sender
 
-The user's forwarding email address *is* their identity in this system — it's how the edge function knows whose inbox a parsed transaction belongs to. That's why sign-up email and the address you forward bank mail *from* must be the same address.
+The user's personalized forwarding address *is* their identity in this system — it's how the edge function knows whose inbox a parsed transaction belongs to. Each profile has a `forwarding_token` (`supabase/migrations/0006_forwarding_token.sql`); the app shows it as a `+tag` on the shared Pipedream address (the "@" header button), and the edge function looks for that tag in three places, in order: the `X-Forwarded-To` header, the `to` address, then falls back to matching `From` by email.
+
+This is deliberately not just "match the `From` address" (the original design), nor just "read the `to` address" — different forwarding setups put the personalized address in different places:
+
+- **Auto-forward filter rule** (Gmail's "Forwarding and POP/IMAP", the realistic setup for "automatic" tracking): routes to the personalized address at the SMTP level, but the message's own `To:` header typically still shows the *original* recipient — the actual destination only shows up in the `X-Forwarded-To` header the relay adds. `From` also stays as the bank's, so from-matching wouldn't work here either.
+- **Manual "Forward"** in a mail client: no `X-Forwarded-To` header, but `to` correctly holds the personalized address (it's the real recipient of the new message), and `From` gets rewritten to the forwarder's own address — the `From`-matching fallback exists for this case, mainly for users who haven't set up a personalized address at all and just forward manually.
 
 ### Why an RPC for "approve", not two client calls
 
@@ -129,15 +134,15 @@ supabase functions deploy parse-email --no-verify-jwt
 
 ### 3. Pipedream workflow
 
-1. Create a new Pipedream workflow with trigger type **Email**. Pipedream mints a unique inbound address for the workflow — that's the address users forward bank emails to.
+1. Create a new Pipedream workflow with trigger type **Email**. Pipedream mints a unique inbound address for the workflow — that's the *base* address; each user forwards to a personalized `base+<their forwarding_token>@...` variant of it (shown in-app via the "@" header button), which Pipedream still routes to the same workflow.
 2. Add a step after the trigger — **"Send an HTTP request"** (or a Node.js code step using `fetch`) — that POSTs the trigger's parsed event as JSON to:
    ```
    https://<project-ref>.supabase.co/functions/v1/parse-email?token=<the WEBHOOK_TOKEN you set>
    ```
-   Body: `{{steps.trigger.event}}` (the full mailparser-parsed email object — the edge function reads `from`, `text`, and `html` off it).
+   Body: `{{steps.trigger.event}}` (the full mailparser-parsed email object — the edge function reads `to`, `from`, `text`, and `html` off it).
 3. Deploy the workflow.
 
-The edge function expects the raw mailparser shape Pipedream's Email trigger produces (`from.value[0].address`, `text`, `html`). If you reshape the payload in a code step before forwarding it, update `PipedreamEmailEvent` and the field access in `supabase/functions/parse-email/index.ts` to match.
+The edge function expects the raw mailparser shape Pipedream's Email trigger produces (`to.value[0].address`, `from.value[0].address`, `text`, `html`, plus `headers`/`headerLines` for `X-Forwarded-To`). If you reshape the payload in a code step before forwarding it, update `PipedreamEmailEvent` and the field access in `supabase/functions/parse-email/index.ts` to match.
 
 ### 4. App environment
 
@@ -145,6 +150,9 @@ The edge function expects the raw mailparser shape Pipedream's Email trigger pro
 cp .env.example .env
 # fill in EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY
 # (anon key only — never put the service_role key in the app)
+# optionally fill in EXPO_PUBLIC_INBOUND_EMAIL_ADDRESS (the base Pipedream
+# address from step 3) so the app can display each user's full personalized
+# forwarding address instead of just their token
 ```
 
 ### 5. Push notifications
