@@ -2,12 +2,13 @@ import { useEffect, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { NavigationContainer } from "@react-navigation/native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { ForwardingAddressModal } from "../components/ForwardingAddressModal";
 import { DashboardScreen } from "../screens/DashboardScreen";
 import { InboxScreen } from "../screens/InboxScreen";
 import { TransactionsScreen } from "../screens/TransactionsScreen";
 import { useAuthStore } from "../store/authStore";
+import { useInboxStore } from "../store/inboxStore";
 import { useProfileStore } from "../store/profileStore";
 
 const Tab = createBottomTabNavigator();
@@ -35,6 +36,16 @@ function HeaderActions() {
   );
 }
 
+function InboxTabIcon({ color, size }: { color: string; size: number }) {
+  const hasPending = useInboxStore((state) => state.items.length > 0);
+  return (
+    <View>
+      <Ionicons name="mail-outline" color={color} size={size} />
+      {hasPending && <View style={styles.badgeDot} />}
+    </View>
+  );
+}
+
 export function RootNavigator() {
   return (
     <NavigationContainer>
@@ -48,9 +59,7 @@ export function RootNavigator() {
           name="Inbox"
           component={InboxScreen}
           options={{
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="mail-outline" color={color} size={size} />
-            ),
+            tabBarIcon: ({ color, size }) => <InboxTabIcon color={color} size={size} />,
           }}
         />
         <Tab.Screen
@@ -75,3 +84,17 @@ export function RootNavigator() {
     </NavigationContainer>
   );
 }
+
+const styles = StyleSheet.create({
+  badgeDot: {
+    position: "absolute",
+    top: -1,
+    right: -4,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#ef4444",
+    borderWidth: 1.5,
+    borderColor: "#fff",
+  },
+});
