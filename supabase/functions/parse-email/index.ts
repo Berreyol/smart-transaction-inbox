@@ -120,7 +120,8 @@ Deno.serve(async (req: Request) => {
 
   const senderEmail =
     payload.from?.value?.[0]?.address?.toLowerCase() ?? extractEmail(payload.from?.text ?? "");
-  const rawText = payload.text?.trim() || htmlToText(payload.html ?? "");
+  const htmlText = payload.html ? htmlToText(payload.html) : "";
+  const rawText = payload.text?.trim() || htmlText;
 
   if (!senderEmail || !rawText) {
     return new Response("Missing sender or body", { status: 400 });
@@ -146,7 +147,7 @@ Deno.serve(async (req: Request) => {
   }
 
   // 2. Extract amount / type / merchant from the email body via regex.
-  const parsed = parseTransactionEmail(rawText, payload.subject);
+  const parsed = parseTransactionEmail(rawText, payload.subject, htmlText);
 
   // 3. Store as a pending transaction awaiting user approval.
   const { error: insertError } = await supabase.from("pending_transactions").insert({

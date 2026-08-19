@@ -62,20 +62,28 @@ function detectType(text: string): TransactionType | null {
   return null;
 }
 
+function extractAmount(source: string): number | null {
+  const match = source.match(AMOUNT_REGEX);
+  const raw = match?.[1] ?? match?.[2] ?? null;
+  return raw ? normalizeAmount(raw) : null;
+}
+
 /**
  * Extracts amount, type, and merchant from a forwarded bank email. Type is
  * looked up in the subject line first — bank notification subjects ("Aviso
  * de depósito", "You made a purchase") tend to state it more reliably than
  * the body — falling back to the body if the subject doesn't yield a match.
+ * Amount is looked up in the plain-text body first, falling back to the
+ * HTML-derived body if given — some bank templates render the amount inside
+ * markup (e.g. a styled `<span>`) that doesn't survive into the mail
+ * provider's plain-text part, so the amount only shows up in the HTML.
  * Returns nulls for any field it can't confidently detect; the caller
  * decides whether that's still worth surfacing to the user for manual review.
  */
-export function parseTransactionEmail(text: string, subject?: string): ParsedTransaction {
+export function parseTransactionEmail(text: string, subject?: string, html?: string): ParsedTransaction {
   const body = text.replace(/\r\n/g, "\n");
 
-  const amountMatch = body.match(AMOUNT_REGEX);
-  const rawAmount = amountMatch?.[1] ?? amountMatch?.[2] ?? null;
-  const amount = rawAmount ? normalizeAmount(rawAmount) : null;
+  const amount = extractAmount(body) ?? (html ? extractAmount(html.replace(/\r\n/g, "\n")) : null);
 
   const type = (subject ? detectType(subject) : null) ?? detectType(body);
 
