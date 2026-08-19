@@ -43,6 +43,14 @@ export type PendingTransaction = {
   created_at: string;
 };
 
+export type Category = {
+  id: string;
+  user_id: string;
+  name: string;
+  type: TransactionType;
+  created_at: string;
+};
+
 /**
  * Row shapes keyed by table name, for use with a typed Supabase client.
  * `Views`/`Functions`/`Enums`/`CompositeTypes` are required (even empty) to
@@ -71,6 +79,12 @@ export type Database = {
         Insert: Partial<PendingTransaction> &
           Pick<PendingTransaction, "user_id" | "raw_text">;
         Update: Partial<PendingTransaction>;
+        Relationships: [];
+      };
+      categories: {
+        Row: Category;
+        Insert: Partial<Category> & Pick<Category, "user_id" | "name" | "type">;
+        Update: Partial<Category>;
         Relationships: [];
       };
     };

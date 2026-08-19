@@ -3,20 +3,29 @@ import { Alert, FlatList, RefreshControl, StyleSheet, Text, View } from "react-n
 import { CategoryModal } from "../components/CategoryModal";
 import { PendingTransactionCard } from "../components/PendingTransactionCard";
 import { useAuthStore } from "../store/authStore";
+import { useCategoriesStore } from "../store/categoriesStore";
 import { useInboxStore } from "../store/inboxStore";
 import type { PendingTransaction } from "../types/database";
 
 export function InboxScreen() {
   const userId = useAuthStore((state) => state.session?.user.id);
   const { items, isLoading, fetchPending, approve, reject, subscribe } = useInboxStore();
+  const categories = useCategoriesStore((state) => state.items);
+  const fetchCategories = useCategoriesStore((state) => state.fetchCategories);
+  const subscribeCategories = useCategoriesStore((state) => state.subscribe);
   const [approvingItem, setApprovingItem] = useState<PendingTransaction | null>(null);
 
   useEffect(() => {
     if (!userId) return;
     fetchPending(userId);
     const unsubscribe = subscribe(userId);
-    return unsubscribe;
-  }, [userId, fetchPending, subscribe]);
+    fetchCategories(userId);
+    const unsubscribeCategories = subscribeCategories(userId);
+    return () => {
+      unsubscribe();
+      unsubscribeCategories();
+    };
+  }, [userId, fetchPending, subscribe, fetchCategories, subscribeCategories]);
 
   const handleReject = (item: PendingTransaction) => {
     Alert.alert("Reject transaction?", "This can't be undone.", [
@@ -63,6 +72,7 @@ export function InboxScreen() {
       <CategoryModal
         visible={approvingItem !== null}
         type={approvingItem?.type ?? null}
+        categories={categories}
         onSelect={handleCategorySelected}
         onClose={() => setApprovingItem(null)}
       />

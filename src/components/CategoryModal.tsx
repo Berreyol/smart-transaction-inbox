@@ -1,29 +1,33 @@
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { categoriesForType } from "../utils/categories";
-import type { TransactionType } from "../types/database";
+import type { Category, TransactionType } from "../types/database";
 
 interface Props {
   visible: boolean;
   type: TransactionType | null;
+  categories: Category[];
   onSelect: (category: string) => void;
   onClose: () => void;
 }
 
-export function CategoryModal({ visible, type, onSelect, onClose }: Props) {
-  const categories = categoriesForType(type);
+export function CategoryModal({ visible, type, categories, onSelect, onClose }: Props) {
+  const options = categoriesForType(categories, type);
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose}>
         <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
           <Text style={styles.title}>Choose a category</Text>
-          {categories.map((category) => (
+          {options.length === 0 && (
+            <Text style={styles.optionText}>No categories yet — add one from Transactions.</Text>
+          )}
+          {options.map((category) => (
             <Pressable
-              key={category}
+              key={category.id}
               style={styles.option}
-              onPress={() => onSelect(category)}
+              onPress={() => onSelect(category.name)}
             >
-              <Text style={styles.optionText}>{category}</Text>
+              <Text style={styles.optionText}>{category.name}</Text>
             </Pressable>
           ))}
           <Pressable style={styles.cancel} onPress={onClose}>
