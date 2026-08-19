@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { FlatList, Modal, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { CategoryPieChart } from "../components/CategoryPieChart";
 import { IncomeExpenseChart } from "../components/IncomeExpenseChart";
 import { TransactionListItem } from "../components/TransactionListItem";
 import { useAuthStore } from "../store/authStore";
+import { useCategoriesStore } from "../store/categoriesStore";
 import { useTransactionsStore } from "../store/transactionsStore";
 import type { Transaction, TransactionType } from "../types/database";
 
@@ -41,6 +43,9 @@ function CategoryTotalRow({ total }: { total: CategoryTotal }) {
 export function DashboardScreen() {
   const userId = useAuthStore((state) => state.session?.user.id);
   const { items, isLoading, fetchTransactions, subscribe } = useTransactionsStore();
+  const categories = useCategoriesStore((state) => state.items);
+  const fetchCategories = useCategoriesStore((state) => state.fetchCategories);
+  const subscribeCategories = useCategoriesStore((state) => state.subscribe);
   const [viewMode, setViewMode] = useState<ViewMode>("type");
   const [menuVisible, setMenuVisible] = useState(false);
 
@@ -48,8 +53,13 @@ export function DashboardScreen() {
     if (!userId) return;
     fetchTransactions(userId);
     const unsubscribe = subscribe(userId);
-    return unsubscribe;
-  }, [userId, fetchTransactions, subscribe]);
+    fetchCategories(userId);
+    const unsubscribeCategories = subscribeCategories(userId);
+    return () => {
+      unsubscribe();
+      unsubscribeCategories();
+    };
+  }, [userId, fetchTransactions, subscribe, fetchCategories, subscribeCategories]);
 
   const { totalIncome, totalExpenses } = useMemo(() => {
     return items.reduce(
@@ -79,6 +89,24 @@ export function DashboardScreen() {
     }
     return [...map.values()].sort((a, b) => b.total - a.total);
   }, [items]);
+
+  const expenseTotals = useMemo(
+    () => categoryTotals.filter((t) => t.type === "expense"),
+    [categoryTotals],
+  );
+  const incomeTotals = useMemo(() => categoryTotals.filter((t) => t.type === "income"), [categoryTotals]);
+
+  // Alphabetical and independent of which categories currently have
+  // transactions, so a category's pie color stays the same across renders —
+  // see colorForCategory.
+  const expenseCategoryNames = useMemo(
+    () => categories.filter((c) => c.type === "expense").map((c) => c.name),
+    [categories],
+  );
+  const incomeCategoryNames = useMemo(
+    () => categories.filter((c) => c.type === "income").map((c) => c.name),
+    [categories],
+  );
 
   const refreshControl = (
     <RefreshControl refreshing={isLoading} onRefresh={() => userId && fetchTransactions(userId)} />
@@ -122,7 +150,19 @@ export function DashboardScreen() {
           refreshControl={refreshControl}
           ListHeaderComponent={
             categoryTotals.length > 0 ? (
-              <Text style={styles.categoryHeader}>Totals by category</Text>
+              <>
+                <CategoryPieChart
+                  title="Expenses by category"
+                  amounts={expenseTotals}
+                  orderedCategoryNames={expenseCategoryNames}
+                />
+                <CategoryPieChart
+                  title="Income by category"
+                  amounts={incomeTotals}
+                  orderedCategoryNames={incomeCategoryNames}
+                />
+                <Text style={styles.categoryHeader}>Totals by category</Text>
+              </>
             ) : null
           }
           ListEmptyComponent={emptyComponent}
