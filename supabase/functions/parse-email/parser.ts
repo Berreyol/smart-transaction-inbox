@@ -56,24 +56,28 @@ function normalizeAmount(raw: string): number {
   return Math.abs(parseFloat(cleaned));
 }
 
+function detectType(text: string): TransactionType | null {
+  if (EXPENSE_KEYWORDS.test(text)) return "expense";
+  if (INCOME_KEYWORDS.test(text)) return "income";
+  return null;
+}
+
 /**
- * Extracts amount, type, and merchant from a forwarded bank email body.
+ * Extracts amount, type, and merchant from a forwarded bank email. Type is
+ * looked up in the subject line first — bank notification subjects ("Aviso
+ * de depósito", "You made a purchase") tend to state it more reliably than
+ * the body — falling back to the body if the subject doesn't yield a match.
  * Returns nulls for any field it can't confidently detect; the caller
  * decides whether that's still worth surfacing to the user for manual review.
  */
-export function parseTransactionEmail(text: string): ParsedTransaction {
+export function parseTransactionEmail(text: string, subject?: string): ParsedTransaction {
   const body = text.replace(/\r\n/g, "\n");
 
   const amountMatch = body.match(AMOUNT_REGEX);
   const rawAmount = amountMatch?.[1] ?? amountMatch?.[2] ?? null;
   const amount = rawAmount ? normalizeAmount(rawAmount) : null;
 
-  let type: TransactionType | null = null;
-  if (EXPENSE_KEYWORDS.test(body)) {
-    type = "expense";
-  } else if (INCOME_KEYWORDS.test(body)) {
-    type = "income";
-  }
+  const type = (subject ? detectType(subject) : null) ?? detectType(body);
 
   const merchantMatch = body.match(MERCHANT_REGEX);
   const merchant = merchantMatch?.[1]?.trim() ?? null;

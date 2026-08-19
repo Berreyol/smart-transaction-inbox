@@ -146,7 +146,7 @@ Deno.serve(async (req: Request) => {
   }
 
   // 2. Extract amount / type / merchant from the email body via regex.
-  const parsed = parseTransactionEmail(rawText);
+  const parsed = parseTransactionEmail(rawText, payload.subject);
 
   // 3. Store as a pending transaction awaiting user approval.
   const { error: insertError } = await supabase.from("pending_transactions").insert({

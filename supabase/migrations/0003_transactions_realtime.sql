@@ -1,0 +1,11 @@
+-- ============================================================================
+-- Add public.transactions to the Realtime publication.
+--
+-- 0001_init.sql added pending_transactions to supabase_realtime but never
+-- added transactions, even though transactionsStore.ts subscribes to
+-- postgres_changes on it (comment: "so a transaction approved from the
+-- Inbox... shows up without a manual refresh"). Without this, Postgres never
+-- publishes changes for that table, so the subscription silently sits idle —
+-- no error, just a Dashboard that never live-updates after an approve.
+-- ============================================================================
+alter publication supabase_realtime add table public.transactions;
