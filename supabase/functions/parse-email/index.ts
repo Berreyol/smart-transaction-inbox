@@ -38,7 +38,7 @@
 // ============================================================================
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
-import { parseTransactionEmail } from "./parser.ts";
+import { selectParser } from "./parsers/index.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -245,8 +245,18 @@ Deno.serve(async (req: Request) => {
     return new Response("OK (no matching user)", { status: 200 });
   }
 
-  // 2. Extract amount / type / merchant from the email body via regex.
-  const parsed = parseTransactionEmail(rawText, payload.subject, htmlText);
+  // 2. Pick a bank-specific parser (Strategy Pattern — see parsers/index.ts),
+  // falling back to the generic regex engine when no bank is recognized.
+  // Subject and both body variants are folded into one search string since
+  // BankParser.parse() takes a single `text` argument by design (see
+  // parsers/types.ts) — keeps every parser's signature uniform regardless of
+  // how many source fields it wants to consider.
+  const subject = payload.subject ?? "";
+  const searchText = [subject, rawText, htmlText && htmlText !== rawText ? htmlText : ""]
+    .filter(Boolean)
+    .join("\n");
+  const parser = selectParser(searchText, subject);
+  const parsed = parser.parse(searchText);
 
   // 3. Store as a pending transaction awaiting user approval.
   const { error: insertError } = await supabase.from("pending_transactions").insert({
@@ -254,6 +264,8 @@ Deno.serve(async (req: Request) => {
     amount: parsed.amount,
     type: parsed.type,
     merchant: parsed.merchant,
+    bank_name: parser.bankName,
+    date: parsed.date,
     raw_text: rawText.slice(0, 5000), // guard against pathologically large bodies
     status: "pending",
   });
