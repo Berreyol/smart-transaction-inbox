@@ -4,13 +4,13 @@ A personal finance app that turns forwarded bank emails into reviewable transact
 
 ## How it works (Method B: Sender Matching)
 
-Every user forwards their bank emails to **one global inbound address**. [Postmark](https://postmarkapp.com) catches inbound mail on that address and POSTs a JSON webhook to a Supabase Edge Function. The function figures out *which user* the email belongs to by matching the email's `From` address against a `profiles` table — not by parsing bank-specific templates or integrating with each bank individually.
+Every user forwards their bank emails to **one global inbound address**. [Pipedream](https://pipedream.com)'s Email trigger catches inbound mail on that address, parses it, and a workflow step POSTs the parsed email as JSON to a Supabase Edge Function. The function figures out *which user* the email belongs to by matching the email's `From` address against a `profiles` table — not by parsing bank-specific templates or integrating with each bank individually.
 
 ```
-┌──────────┐   forwards bank email   ┌──────────┐   inbound webhook   ┌────────────────────┐
-│   User   │ ───────────────────────▶│ Postmark │────────────────────▶│  Edge Function      │
-│  (bank   │                         │ (inbound │                     │  parse-email        │
-│  email)  │                         │ parsing) │                     │                      │
+┌──────────┐   forwards bank email   ┌──────────┐   HTTP POST step    ┌────────────────────┐
+│   User   │ ───────────────────────▶│Pipedream │────────────────────▶│  Edge Function      │
+│  (bank   │                         │ (Email   │                     │  parse-email        │
+│  email)  │                         │ trigger) │                     │                      │
 └──────────┘                         └──────────┘                     │ 1. From → profiles   │
                                                                        │ 2. regex → amount/    │
                                                                        │    type/merchant      │
@@ -57,7 +57,7 @@ Anyone with the app's public anon key can call the Supabase REST API directly. I
 | Navigation | React Navigation (bottom tabs) |
 | State | Zustand |
 | Backend | Supabase (Postgres + Auth + Realtime + Edge Functions) |
-| Email parsing | Postmark inbound webhook → Deno Edge Function |
+| Email parsing | Pipedream Email trigger → HTTP step → Deno Edge Function |
 | Push notifications | Expo Push API |
 | Charts | react-native-gifted-charts |
 
@@ -92,7 +92,7 @@ Anyone with the app's public anon key can call the Supabase REST API directly. I
 │   │   └── 0002_approve_pending_transaction.sql
 │   └── functions/
 │       └── parse-email/
-│           ├── index.ts             # Postmark webhook handler
+│           ├── index.ts             # Pipedream webhook handler
 │           ├── parser.ts            # Regex extraction (amount/type/merchant)
 │           └── deno.json
 └── .env.example
@@ -119,20 +119,25 @@ supabase db push
 ### 2. Edge function secrets & deploy
 
 ```bash
-# Shared secret Postmark must pass back on the webhook URL (?token=...)
+# Shared secret the Pipedream workflow must pass back on the webhook URL (?token=...)
 supabase secrets set WEBHOOK_TOKEN=<random-string>
 
 supabase functions deploy parse-email --no-verify-jwt
 ```
 
-`--no-verify-jwt` is required because Postmark, not a logged-in Supabase user, calls this endpoint — auth is instead enforced via `WEBHOOK_TOKEN`. `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` are injected automatically.
+`--no-verify-jwt` is required because Pipedream, not a logged-in Supabase user, calls this endpoint — auth is instead enforced via `WEBHOOK_TOKEN`. `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` are injected automatically.
 
-### 3. Postmark inbound webhook
+### 3. Pipedream workflow
 
-Point your Postmark inbound stream's webhook URL at:
-```
-https://<project-ref>.functions.supabase.co/parse-email?token=<the WEBHOOK_TOKEN you set>
-```
+1. Create a new Pipedream workflow with trigger type **Email**. Pipedream mints a unique inbound address for the workflow — that's the address users forward bank emails to.
+2. Add a step after the trigger — **"Send an HTTP request"** (or a Node.js code step using `fetch`) — that POSTs the trigger's parsed event as JSON to:
+   ```
+   https://<project-ref>.supabase.co/functions/v1/parse-email?token=<the WEBHOOK_TOKEN you set>
+   ```
+   Body: `{{steps.trigger.event}}` (the full mailparser-parsed email object — the edge function reads `from`, `text`, and `html` off it).
+3. Deploy the workflow.
+
+The edge function expects the raw mailparser shape Pipedream's Email trigger produces (`from.value[0].address`, `text`, `html`). If you reshape the payload in a code step before forwarding it, update `PipedreamEmailEvent` and the field access in `supabase/functions/parse-email/index.ts` to match.
 
 ### 4. App environment
 
