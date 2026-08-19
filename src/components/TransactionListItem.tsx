@@ -1,4 +1,5 @@
-import { StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import type { Transaction } from "../types/database";
 
 function formatDate(iso: string): string {
@@ -10,13 +11,15 @@ function formatDate(iso: string): string {
 
 interface Props {
   transaction: Transaction;
+  onPress?: () => void;
+  onDelete?: () => void;
 }
 
-export function TransactionListItem({ transaction }: Props) {
+export function TransactionListItem({ transaction, onPress, onDelete }: Props) {
   const isIncome = transaction.type === "income";
   const sign = isIncome ? "+" : "-";
 
-  return (
+  const row = (
     <View style={styles.row}>
       <View style={styles.left}>
         <Text style={styles.merchant} numberOfLines={1}>
@@ -29,8 +32,16 @@ export function TransactionListItem({ transaction }: Props) {
       <Text style={[styles.amount, isIncome ? styles.amountIncome : styles.amountExpense]}>
         {sign}${transaction.amount.toFixed(2)}
       </Text>
+      {onDelete && (
+        <Pressable hitSlop={10} style={styles.deleteButton} onPress={onDelete}>
+          <Ionicons name="trash-outline" size={18} color="#9ca3af" />
+        </Pressable>
+      )}
     </View>
   );
+
+  if (!onPress) return row;
+  return <Pressable onPress={onPress}>{row}</Pressable>;
 }
 
 const styles = StyleSheet.create({
@@ -68,5 +79,8 @@ const styles = StyleSheet.create({
   },
   amountExpense: {
     color: "#dc2626",
+  },
+  deleteButton: {
+    marginLeft: 12,
   },
 });

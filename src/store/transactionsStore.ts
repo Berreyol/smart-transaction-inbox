@@ -5,13 +5,30 @@
 // ============================================================================
 import { create } from "zustand";
 import { supabase } from "../lib/supabase";
-import type { Transaction } from "../types/database";
+import type { Transaction, TransactionType } from "../types/database";
+
+function sortByDateDesc(items: Transaction[]): Transaction[] {
+  return [...items].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+}
+
+let subscriberCount = 0;
+let teardownChannel: (() => void) | null = null;
+
+export interface TransactionInput {
+  amount: number;
+  type: TransactionType;
+  category: string;
+  merchant: string | null;
+}
 
 interface TransactionsState {
   items: Transaction[];
   isLoading: boolean;
   error: string | null;
   fetchTransactions: (userId: string) => Promise<void>;
+  createTransaction: (userId: string, input: TransactionInput) => Promise<boolean>;
+  updateTransaction: (id: string, input: TransactionInput) => Promise<boolean>;
+  deleteTransaction: (id: string) => Promise<boolean>;
   subscribe: (userId: string) => () => void;
 }
 
@@ -35,25 +52,81 @@ export const useTransactionsStore = create<TransactionsState>((set, get) => ({
     set({ items: data ?? [], isLoading: false });
   },
 
+  createTransaction: async (userId: string, input: TransactionInput) => {
+    const { data, error } = await supabase
+      .from("transactions")
+      .insert({ user_id: userId, date: new Date().toISOString(), ...input })
+      .select()
+      .single();
+
+    if (error) {
+      set({ error: error.message });
+      return false;
+    }
+    set({ items: sortByDateDesc([...get().items, data]) });
+    return true;
+  },
+
+  updateTransaction: async (id: string, input: TransactionInput) => {
+    const { data, error } = await supabase
+      .from("transactions")
+      .update(input)
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) {
+      set({ error: error.message });
+      return false;
+    }
+    set({ items: sortByDateDesc(get().items.map((t) => (t.id === id ? data : t))) });
+    return true;
+  },
+
+  deleteTransaction: async (id: string) => {
+    const { error } = await supabase.from("transactions").delete().eq("id", id);
+    if (error) {
+      set({ error: error.message });
+      return false;
+    }
+    set({ items: get().items.filter((t) => t.id !== id) });
+    return true;
+  },
+
   subscribe: (userId: string) => {
-    const channel = supabase
-      .channel(`transactions:${userId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "transactions",
-          filter: `user_id=eq.${userId}`,
-        },
-        () => {
-          get().fetchTransactions(userId);
-        },
-      )
-      .subscribe();
+    // Both DashboardScreen and TransactionsScreen subscribe to this store,
+    // so ref-count the underlying channel: a second `.channel()` call with
+    // the same topic while the first is still subscribed throws ("cannot
+    // add `postgres_changes` callbacks... after `subscribe()`"), so only
+    // the first caller actually opens a channel; later callers just bump
+    // the ref count, and the channel closes once the last one unmounts.
+    subscriberCount += 1;
+    if (!teardownChannel) {
+      const channel = supabase
+        .channel(`transactions:${userId}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "transactions",
+            filter: `user_id=eq.${userId}`,
+          },
+          () => {
+            get().fetchTransactions(userId);
+          },
+        )
+        .subscribe();
+      teardownChannel = () => supabase.removeChannel(channel);
+    }
 
     return () => {
-      supabase.removeChannel(channel);
+      subscriberCount -= 1;
+      if (subscriberCount <= 0 && teardownChannel) {
+        teardownChannel();
+        teardownChannel = null;
+        subscriberCount = 0;
+      }
     };
   },
 }));
