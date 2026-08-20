@@ -5,8 +5,9 @@ import { CategoriesModal } from "../components/CategoriesModal";
 import { TransactionFormModal } from "../components/TransactionFormModal";
 import { TransactionListItem } from "../components/TransactionListItem";
 import { useAuthStore } from "../store/authStore";
+import { useBankAccountsStore } from "../store/bankAccountsStore";
 import { useCategoriesStore } from "../store/categoriesStore";
-import { useTransactionsStore } from "../store/transactionsStore";
+import { useTransactionsStore, type TransactionInput } from "../store/transactionsStore";
 import type { Transaction, TransactionType } from "../types/database";
 import { DATE_PRESET_LABELS, resolveDateRange, type DatePreset } from "../utils/dateFilter";
 
@@ -40,6 +41,8 @@ export function TransactionsScreen() {
   const categories = useCategoriesStore((state) => state.items);
   const fetchCategories = useCategoriesStore((state) => state.fetchCategories);
   const subscribeCategories = useCategoriesStore((state) => state.subscribe);
+  const fetchBankAccounts = useBankAccountsStore((state) => state.fetchBankAccounts);
+  const subscribeBankAccounts = useBankAccountsStore((state) => state.subscribe);
 
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all");
@@ -60,11 +63,22 @@ export function TransactionsScreen() {
     const unsubscribe = subscribe(userId);
     fetchCategories(userId);
     const unsubscribeCategories = subscribeCategories(userId);
+    fetchBankAccounts(userId);
+    const unsubscribeBankAccounts = subscribeBankAccounts(userId);
     return () => {
       unsubscribe();
       unsubscribeCategories();
+      unsubscribeBankAccounts();
     };
-  }, [userId, fetchTransactions, subscribe, fetchCategories, subscribeCategories]);
+  }, [
+    userId,
+    fetchTransactions,
+    subscribe,
+    fetchCategories,
+    subscribeCategories,
+    fetchBankAccounts,
+    subscribeBankAccounts,
+  ]);
 
   const dateRange = useMemo(
     () => resolveDateRange(datePreset, customStart, customEnd),
@@ -107,12 +121,7 @@ export function TransactionsScreen() {
     ]);
   };
 
-  const handleSubmit = async (input: {
-    amount: number;
-    type: TransactionType;
-    category: string;
-    merchant: string | null;
-  }) => {
+  const handleSubmit = async (input: TransactionInput) => {
     if (editingTransaction) return updateTransaction(editingTransaction.id, input);
     if (!userId) return false;
     return createTransaction(userId, input);

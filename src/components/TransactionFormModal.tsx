@@ -10,7 +10,9 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { BankAccountPickerModal } from "./BankAccountPickerModal";
 import { CategoryModal } from "./CategoryModal";
+import { useBankAccountsStore } from "../store/bankAccountsStore";
 import { useCategoriesStore } from "../store/categoriesStore";
 import type { TransactionInput } from "../store/transactionsStore";
 import type { Transaction, TransactionType } from "../types/database";
@@ -25,12 +27,15 @@ interface Props {
 
 export function TransactionFormModal({ visible, transaction, onSubmit, onClose }: Props) {
   const categories = useCategoriesStore((state) => state.items);
+  const bankAccounts = useBankAccountsStore((state) => state.items);
 
   const [type, setType] = useState<TransactionType>("expense");
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState("");
   const [merchant, setMerchant] = useState("");
+  const [accountId, setAccountId] = useState<string | null>(null);
   const [categoryPickerVisible, setCategoryPickerVisible] = useState(false);
+  const [accountPickerVisible, setAccountPickerVisible] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -40,8 +45,11 @@ export function TransactionFormModal({ visible, transaction, onSubmit, onClose }
     setAmount(transaction ? String(transaction.amount) : "");
     setCategory(transaction?.category ?? "");
     setMerchant(transaction?.merchant ?? "");
+    setAccountId(transaction?.account_id ?? null);
     setError(null);
   }, [visible, transaction]);
+
+  const selectedAccount = bankAccounts.find((account) => account.id === accountId) ?? null;
 
   const handleTypeChange = (next: TransactionType) => {
     setType(next);
@@ -65,6 +73,7 @@ export function TransactionFormModal({ visible, transaction, onSubmit, onClose }
       type,
       category,
       merchant: merchant.trim() || null,
+      account_id: accountId,
     });
     setSubmitting(false);
 
@@ -126,6 +135,17 @@ export function TransactionFormModal({ visible, transaction, onSubmit, onClose }
             onChangeText={setMerchant}
           />
 
+          {bankAccounts.length > 0 && (
+            <>
+              <Text style={styles.label}>Account (optional)</Text>
+              <Pressable style={styles.input} onPress={() => setAccountPickerVisible(true)}>
+                <Text style={selectedAccount ? styles.inputText : styles.placeholderText}>
+                  {selectedAccount ? selectedAccount.account_alias : "No account"}
+                </Text>
+              </Pressable>
+            </>
+          )}
+
           {error && <Text style={styles.error}>{error}</Text>}
 
           <Pressable
@@ -154,6 +174,16 @@ export function TransactionFormModal({ visible, transaction, onSubmit, onClose }
           setCategoryPickerVisible(false);
         }}
         onClose={() => setCategoryPickerVisible(false)}
+      />
+
+      <BankAccountPickerModal
+        visible={accountPickerVisible}
+        accounts={bankAccounts}
+        onSelect={(id) => {
+          setAccountId(id);
+          setAccountPickerVisible(false);
+        }}
+        onClose={() => setAccountPickerVisible(false)}
       />
     </Modal>
   );

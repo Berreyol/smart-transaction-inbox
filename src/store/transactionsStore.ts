@@ -19,6 +19,7 @@ export interface TransactionInput {
   type: TransactionType;
   category: string;
   merchant: string | null;
+  account_id: string | null;
 }
 
 interface TransactionsState {
