@@ -69,6 +69,28 @@ function extractAmount(source: string): number | null {
 }
 
 /**
+ * Finds which of the user's saved bank accounts (if any) an email is for, by
+ * checking whether that account's alias appears verbatim, case-insensitively,
+ * anywhere in the email text — e.g. an account aliased "Costco Banamex"
+ * matches a body containing "COSTCO BANAMEX**854". Returns the first match in
+ * `accounts` order (callers control priority via that ordering); an
+ * empty/whitespace-only alias never matches, since `"".includes("")` would
+ * otherwise match everything.
+ */
+export function matchBankAccount<T extends { account_alias: string }>(
+  searchText: string,
+  accounts: T[],
+): T | null {
+  const haystack = searchText.toLowerCase();
+  return (
+    accounts.find((account) => {
+      const alias = account.account_alias.trim().toLowerCase();
+      return alias.length > 0 && haystack.includes(alias);
+    }) ?? null
+  );
+}
+
+/**
  * Extracts amount, type, and merchant from a forwarded bank email. Type is
  * looked up in the subject line first — bank notification subjects ("Aviso
  * de depósito", "You made a purchase") tend to state it more reliably than

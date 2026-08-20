@@ -38,6 +38,7 @@
 // ============================================================================
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
+import { matchBankAccount } from "./parser.ts";
 import { selectParser } from "./parsers/index.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -258,6 +259,21 @@ Deno.serve(async (req: Request) => {
   const parser = selectParser(searchText, subject);
   const parsed = parser.parse(searchText);
 
+  // 2b. Suggest one of the user's saved bank accounts, if its alias appears
+  // in the email (e.g. an account aliased "Costco Banamex" matches
+  // "COSTCO BANAMEX**854" in the body) — see matchBankAccount() in parser.ts.
+  // Just a suggestion the Inbox pre-fills; the user still confirms it at
+  // approval time.
+  const { data: bankAccounts, error: bankAccountsError } = await supabase
+    .from("bank_accounts")
+    .select("id, account_alias")
+    .eq("user_id", profile.id);
+
+  if (bankAccountsError) {
+    console.error("Error fetching bank accounts for matching:", bankAccountsError);
+  }
+  const matchedAccount = bankAccounts ? matchBankAccount(searchText, bankAccounts) : null;
+
   // 3. Store as a pending transaction awaiting user approval.
   const { error: insertError } = await supabase.from("pending_transactions").insert({
     user_id: profile.id,
@@ -265,6 +281,7 @@ Deno.serve(async (req: Request) => {
     type: parsed.type,
     merchant: parsed.merchant,
     bank_name: parser.bankName,
+    account_id: matchedAccount?.id ?? null,
     date: parsed.date,
     raw_text: rawText.slice(0, 5000), // guard against pathologically large bodies
     status: "pending",

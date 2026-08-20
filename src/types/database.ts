@@ -40,6 +40,7 @@ export type PendingTransaction = {
   type: TransactionType | null;
   merchant: string | null;
   bank_name: string | null;
+  account_id: string | null;
   raw_text: string;
   date: string;
   status: PendingStatus;

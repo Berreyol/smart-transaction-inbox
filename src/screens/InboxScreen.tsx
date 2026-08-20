@@ -53,11 +53,14 @@ export function InboxScreen() {
 
   // Category first, then (if the user has any saved accounts) which one to
   // assign — skippable, since account_id is nullable and not every user
-  // bothers tracking accounts individually.
+  // bothers tracking accounts individually. Also skipped when parse-email
+  // already matched the account by alias (see matchBankAccount() in
+  // parser.ts) — no need to make the user re-confirm what was already found
+  // in the email.
   const handleCategorySelected = async (category: string) => {
     if (!approvingItem) return;
-    if (bankAccounts.length === 0) {
-      await finishApproval(category, null);
+    if (bankAccounts.length === 0 || approvingItem.account_id) {
+      await finishApproval(category, approvingItem.account_id);
       return;
     }
     setPendingCategory(category);
@@ -99,6 +102,7 @@ export function InboxScreen() {
         renderItem={({ item }) => (
           <PendingTransactionCard
             item={item}
+            matchedAccount={bankAccounts.find((account) => account.id === item.account_id) ?? null}
             onApprove={() => setApprovingItem(item)}
             onReject={() => handleReject(item)}
           />

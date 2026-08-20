@@ -1,5 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import type { PendingTransaction } from "../types/database";
+import type { BankAccount, PendingTransaction } from "../types/database";
 
 const RAW_TEXT_SNIPPET_LENGTH = 140;
 
@@ -9,11 +9,12 @@ function formatAmount(amount: number | null): string {
 
 interface Props {
   item: PendingTransaction;
+  matchedAccount: BankAccount | null;
   onApprove: () => void;
   onReject: () => void;
 }
 
-export function PendingTransactionCard({ item, onApprove, onReject }: Props) {
+export function PendingTransactionCard({ item, matchedAccount, onApprove, onReject }: Props) {
   const canApprove = item.amount !== null && item.type !== null;
   const snippet =
     item.raw_text.length > RAW_TEXT_SNIPPET_LENGTH
@@ -33,6 +34,13 @@ export function PendingTransactionCard({ item, onApprove, onReject }: Props) {
 
       {item.bank_name && <Text style={styles.bankName}>{item.bank_name}</Text>}
       {item.merchant && <Text style={styles.merchant}>{item.merchant}</Text>}
+      {matchedAccount && (
+        <View style={styles.matchedAccount}>
+          <Text style={styles.matchedAccountText}>
+            Matched account: {matchedAccount.account_alias}
+          </Text>
+        </View>
+      )}
 
       <Text style={styles.snippet} numberOfLines={3}>
         {snippet}
@@ -111,6 +119,19 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#374151",
     marginTop: 6,
+  },
+  matchedAccount: {
+    alignSelf: "flex-start",
+    backgroundColor: "#eef2ff",
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    marginTop: 8,
+  },
+  matchedAccountText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#4338ca",
   },
   snippet: {
     fontSize: 13,
