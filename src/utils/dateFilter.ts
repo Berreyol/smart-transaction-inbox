@@ -1,6 +1,9 @@
 // Shared date-range filter logic for TransactionsScreen and DashboardScreen.
 export type DatePreset = "all" | "today" | "7d" | "30d" | "month" | "custom";
 
+/** Screens open scoped to the current month rather than "All time". */
+export const DEFAULT_DATE_PRESET: DatePreset = "month";
+
 export const DATE_PRESET_LABELS: Record<DatePreset, string> = {
   all: "All time",
   today: "Today",
@@ -18,6 +21,18 @@ function startOfDay(date: Date) {
 
 function endOfDay(date: Date) {
   return new Date(startOfDay(date).getTime() + 24 * 60 * 60 * 1000 - 1);
+}
+
+/**
+ * Inclusive day count between two resolved bounds — an unbounded/future end
+ * clamps to today, and an unbounded start clamps to that end (so a fully
+ * unbounded range reads as a 1-day span, "today").
+ */
+export function daySpan(start: Date | null, end: Date | null): number {
+  const today = startOfDay(new Date());
+  const resolvedEnd = end ? (startOfDay(end) > today ? today : startOfDay(end)) : today;
+  const resolvedStart = start ? startOfDay(start) : resolvedEnd;
+  return Math.round((resolvedEnd.getTime() - resolvedStart.getTime()) / (24 * 60 * 60 * 1000)) + 1;
 }
 
 /** Resolves a preset (or validated custom YYYY-MM-DD bounds) to a concrete [start, end] range; null bound = unbounded. */

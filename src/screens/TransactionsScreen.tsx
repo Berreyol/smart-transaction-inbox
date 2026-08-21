@@ -10,9 +10,10 @@ import type { RootTabParamList } from "../navigation/types";
 import { useAuthStore } from "../store/authStore";
 import { useBankAccountsStore } from "../store/bankAccountsStore";
 import { useCategoriesStore } from "../store/categoriesStore";
+import { useDateFilterStore } from "../store/dateFilterStore";
 import { useTransactionsStore, type TransactionInput } from "../store/transactionsStore";
 import type { Transaction, TransactionType } from "../types/database";
-import { DATE_PRESET_LABELS, resolveDateRange, type DatePreset } from "../utils/dateFilter";
+import { DATE_PRESET_LABELS, DEFAULT_DATE_PRESET, resolveDateRange, type DatePreset } from "../utils/dateFilter";
 
 type TypeFilter = "all" | TransactionType;
 type CategoryFilter = "all" | string;
@@ -50,9 +51,12 @@ export function TransactionsScreen() {
 
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all");
-  const [datePreset, setDatePreset] = useState<DatePreset>("all");
-  const [customStart, setCustomStart] = useState("");
-  const [customEnd, setCustomEnd] = useState("");
+  const datePreset = useDateFilterStore((state) => state.datePreset);
+  const setDatePreset = useDateFilterStore((state) => state.setDatePreset);
+  const customStart = useDateFilterStore((state) => state.customStart);
+  const setCustomStart = useDateFilterStore((state) => state.setCustomStart);
+  const customEnd = useDateFilterStore((state) => state.customEnd);
+  const setCustomEnd = useDateFilterStore((state) => state.setCustomEnd);
   const [sortBy, setSortBy] = useState<SortOption>("recent");
   const [sortMenuVisible, setSortMenuVisible] = useState(false);
   const [categoryMenuVisible, setCategoryMenuVisible] = useState(false);
@@ -88,6 +92,11 @@ export function TransactionsScreen() {
     if (!route.params) return;
     if (route.params.type) setTypeFilter(route.params.type);
     if (route.params.category) setCategoryFilter(route.params.category);
+    if (route.params.date) {
+      setDatePreset("custom");
+      setCustomStart(route.params.date);
+      setCustomEnd(route.params.date);
+    }
   }, [route.params]);
 
   const dateRange = useMemo(
@@ -156,7 +165,7 @@ export function TransactionsScreen() {
         <View style={styles.toolbarRight}>
           <Pressable style={styles.iconButton} onPress={() => setDateMenuVisible(true)}>
             <Ionicons name="calendar-outline" size={20} color="#4f46e5" />
-            {datePreset !== "all" && <View style={styles.iconBadge} />}
+            {datePreset !== DEFAULT_DATE_PRESET && <View style={styles.iconBadge} />}
           </Pressable>
           <Pressable style={styles.iconButton} onPress={() => setCategoryMenuVisible(true)}>
             <Ionicons name="funnel-outline" size={20} color="#4f46e5" />
@@ -171,9 +180,9 @@ export function TransactionsScreen() {
         </View>
       </View>
 
-      {(categoryFilter !== "all" || datePreset !== "all") && (
+      {(categoryFilter !== "all" || datePreset !== DEFAULT_DATE_PRESET) && (
         <View style={styles.activeFilterRow}>
-          {datePreset !== "all" && (
+          {datePreset !== DEFAULT_DATE_PRESET && (
             <View style={styles.activeFilterChip}>
               <Text style={styles.activeFilterText}>
                 {datePreset === "custom" && customStart && customEnd
@@ -183,7 +192,7 @@ export function TransactionsScreen() {
               <Pressable
                 hitSlop={8}
                 onPress={() => {
-                  setDatePreset("all");
+                  setDatePreset(DEFAULT_DATE_PRESET);
                   setCustomStart("");
                   setCustomEnd("");
                 }}

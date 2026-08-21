@@ -3,15 +3,25 @@ import { Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInp
 import { Ionicons } from "@expo/vector-icons";
 import type { NavigationProp } from "@react-navigation/native";
 import { useNavigation } from "@react-navigation/native";
+import { CalendarActivityChart } from "../components/CalendarActivityChart";
 import { CategoryPieChart } from "../components/CategoryPieChart";
+import { DailyActivityChart } from "../components/DailyActivityChart";
 import { IncomeExpenseChart } from "../components/IncomeExpenseChart";
+import { MonthCalendarChart } from "../components/MonthCalendarChart";
 import type { RootTabParamList } from "../navigation/types";
 import { useAuthStore } from "../store/authStore";
 import { useBankAccountsStore } from "../store/bankAccountsStore";
 import { useCategoriesStore } from "../store/categoriesStore";
+import { useDateFilterStore } from "../store/dateFilterStore";
 import { useTransactionsStore } from "../store/transactionsStore";
 import type { TransactionType } from "../types/database";
-import { DATE_PRESET_LABELS, resolveDateRange, type DatePreset } from "../utils/dateFilter";
+import {
+  DATE_PRESET_LABELS,
+  daySpan,
+  DEFAULT_DATE_PRESET,
+  resolveDateRange,
+  type DatePreset,
+} from "../utils/dateFilter";
 
 type AccountFilter = "all" | string;
 
@@ -41,9 +51,12 @@ export function DashboardScreen() {
   const subscribeBankAccounts = useBankAccountsStore((state) => state.subscribe);
   const [viewMode, setViewMode] = useState<ViewMode>("type");
   const [menuVisible, setMenuVisible] = useState(false);
-  const [datePreset, setDatePreset] = useState<DatePreset>("all");
-  const [customStart, setCustomStart] = useState("");
-  const [customEnd, setCustomEnd] = useState("");
+  const datePreset = useDateFilterStore((state) => state.datePreset);
+  const setDatePreset = useDateFilterStore((state) => state.setDatePreset);
+  const customStart = useDateFilterStore((state) => state.customStart);
+  const setCustomStart = useDateFilterStore((state) => state.setCustomStart);
+  const customEnd = useDateFilterStore((state) => state.customEnd);
+  const setCustomEnd = useDateFilterStore((state) => state.setCustomEnd);
   const [dateMenuVisible, setDateMenuVisible] = useState(false);
   const [accountFilter, setAccountFilter] = useState<AccountFilter>("all");
   const [accountMenuVisible, setAccountMenuVisible] = useState(false);
@@ -75,6 +88,28 @@ export function DashboardScreen() {
     () => resolveDateRange(datePreset, customStart, customEnd),
     [datePreset, customStart, customEnd],
   );
+
+  // The "month"/"all" presets always get their matching chart; for "custom"
+  // (and the remaining "today"/"7d"/"30d" presets) the chart is picked from
+  // the actual span, so a hand-picked range reads as well as a preset does.
+  const activityChartKind = useMemo<"daily" | "month" | "heatmap">(() => {
+    if (datePreset === "month") return "month";
+    if (datePreset === "all") return "heatmap";
+    if (datePreset !== "custom") return "daily";
+    const span = daySpan(dateRange.start, dateRange.end);
+    if (span <= 7) return "daily";
+    if (span > 31) return "heatmap";
+    // The month grid can only render one calendar month at a time, so a
+    // range crossing a month boundary (e.g. Jan 25 – Feb 10) falls back to
+    // the heatmap rather than silently dropping the days past the start's
+    // month.
+    const crossesMonthBoundary =
+      dateRange.start &&
+      dateRange.end &&
+      (dateRange.start.getFullYear() !== dateRange.end.getFullYear() ||
+        dateRange.start.getMonth() !== dateRange.end.getMonth());
+    return crossesMonthBoundary ? "heatmap" : "month";
+  }, [datePreset, dateRange]);
 
   const filteredItems = useMemo(() => {
     return items.filter((t) => {
@@ -144,6 +179,13 @@ export function DashboardScreen() {
     navigation.navigate("Transactions", { type, category });
   };
 
+  const goToTransactionsDate = (date: Date) => {
+    const iso = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(
+      date.getDate(),
+    ).padStart(2, "0")}`;
+    navigation.navigate("Transactions", { date: iso });
+  };
+
   const refreshControl = (
     <RefreshControl refreshing={isLoading} onRefresh={() => userId && fetchTransactions(userId)} />
   );
@@ -164,7 +206,7 @@ export function DashboardScreen() {
         </Pressable>
         <Pressable style={styles.iconButton} onPress={() => setDateMenuVisible(true)}>
           <Ionicons name="calendar-outline" size={20} color="#4f46e5" />
-          {datePreset !== "all" && <View style={styles.iconBadge} />}
+          {datePreset !== DEFAULT_DATE_PRESET && <View style={styles.iconBadge} />}
         </Pressable>
         <Pressable style={styles.iconButton} onPress={() => setAccountMenuVisible(true)}>
           <Ionicons name="card-outline" size={20} color="#4f46e5" />
@@ -172,9 +214,9 @@ export function DashboardScreen() {
         </Pressable>
       </View>
 
-      {(datePreset !== "all" || accountFilter !== "all") && (
+      {(datePreset !== DEFAULT_DATE_PRESET || accountFilter !== "all") && (
         <View style={styles.activeFilterRow}>
-          {datePreset !== "all" && (
+          {datePreset !== DEFAULT_DATE_PRESET && (
             <View style={styles.activeFilterChip}>
               <Text style={styles.activeFilterText}>
                 {datePreset === "custom" && customStart && customEnd
@@ -184,7 +226,7 @@ export function DashboardScreen() {
               <Pressable
                 hitSlop={8}
                 onPress={() => {
-                  setDatePreset("all");
+                  setDatePreset(DEFAULT_DATE_PRESET);
                   setCustomStart("");
                   setCustomEnd("");
                 }}
@@ -213,11 +255,33 @@ export function DashboardScreen() {
           refreshControl={refreshControl}
         >
           {filteredItems.length > 0 ? (
-            <IncomeExpenseChart
-              totalIncome={totalIncome}
-              totalExpenses={totalExpenses}
-              onSelectType={(type) => goToTransactions(type)}
-            />
+            <>
+              <IncomeExpenseChart
+                totalIncome={totalIncome}
+                totalExpenses={totalExpenses}
+                onSelectType={(type) => goToTransactions(type)}
+              />
+              {activityChartKind === "month" ? (
+                <MonthCalendarChart
+                  transactions={filteredItems}
+                  monthDate={dateRange.start ?? new Date()}
+                  onSelectDate={goToTransactionsDate}
+                />
+              ) : activityChartKind === "heatmap" ? (
+                <CalendarActivityChart
+                  transactions={filteredItems}
+                  rangeStart={dateRange.start}
+                  rangeEnd={dateRange.end}
+                  onSelectDate={goToTransactionsDate}
+                />
+              ) : (
+                <DailyActivityChart
+                  transactions={filteredItems}
+                  rangeStart={dateRange.start}
+                  rangeEnd={dateRange.end}
+                />
+              )}
+            </>
           ) : (
             emptyComponent
           )}
