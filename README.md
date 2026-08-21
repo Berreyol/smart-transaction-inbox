@@ -52,7 +52,7 @@ Approving a pending transaction is two writes: insert into `transactions`, delet
 
 ### Why `pending_transactions` has no client INSERT policy
 
-Anyone with the app's public anon key can call the Supabase REST API directly. If regular users could `INSERT` into `pending_transactions`, they could plant fake transactions in *anyone's* inbox (RLS on insert only stops writing rows you don't own if you explicitly check `user_id = auth.uid()` in a `WITH CHECK`, but there's no scenario where a client should be creating these rows at all). So there is no insert policy for the `authenticated` role — only the edge function, running with the `service_role` key (which bypasses RLS entirely), can create pending rows.
+Anyone with the app's public publishable key can call the Supabase REST API directly. If regular users could `INSERT` into `pending_transactions`, they could plant fake transactions in *anyone's* inbox (RLS on insert only stops writing rows you don't own if you explicitly check `user_id = auth.uid()` in a `WITH CHECK`, but there's no scenario where a client should be creating these rows at all). So there is no insert policy for the `authenticated` role — only the edge function, running with the `service_role` key (which bypasses RLS entirely), can create pending rows.
 
 ## Tech stack
 
@@ -72,7 +72,7 @@ Anyone with the app's public anon key can call the Supabase REST API directly. I
 .
 ├── App.tsx                          # Root: auth gate → AuthScreen or RootNavigator
 ├── src/
-│   ├── lib/supabase.ts              # Supabase client singleton (anon key, AsyncStorage session)
+│   ├── lib/supabase.ts              # Supabase client singleton (publishable key, AsyncStorage session)
 │   ├── store/
 │   │   ├── authStore.ts             # Zustand: session, sign in/up/out
 │   │   ├── inboxStore.ts            # Zustand: pending queue, approve/reject, Realtime subscribe
@@ -148,8 +148,8 @@ The edge function expects the raw mailparser shape Pipedream's Email trigger pro
 
 ```bash
 cp .env.example .env
-# fill in EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY
-# (anon key only — never put the service_role key in the app)
+# fill in EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+# (publishable key only — never put the service_role key in the app)
 # optionally fill in EXPO_PUBLIC_INBOUND_EMAIL_ADDRESS (the base Pipedream
 # address from step 3) so the app can display each user's full personalized
 # forwarding address instead of just their token
