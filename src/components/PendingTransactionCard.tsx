@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { BankAccount, PendingTransaction } from "../types/database";
 
-const RAW_TEXT_SNIPPET_LENGTH = 140;
+const SNIPPET_LENGTH = 140;
 
 function formatAmount(amount: number | null): string {
   return amount === null ? "Amount not detected" : `$${amount.toFixed(2)}`;
@@ -16,10 +16,11 @@ interface Props {
 
 export function PendingTransactionCard({ item, matchedAccount, onApprove, onReject }: Props) {
   const canApprove = item.amount !== null && item.type !== null;
+  const displayText = item.merchant?.trim() || item.subject?.trim() || item.raw_text;
   const snippet =
-    item.raw_text.length > RAW_TEXT_SNIPPET_LENGTH
-      ? `${item.raw_text.slice(0, RAW_TEXT_SNIPPET_LENGTH).trim()}…`
-      : item.raw_text;
+    displayText.length > SNIPPET_LENGTH
+      ? `${displayText.slice(0, SNIPPET_LENGTH).trim()}…`
+      : displayText;
 
   return (
     <View style={styles.card}>

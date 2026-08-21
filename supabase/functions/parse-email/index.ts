@@ -278,6 +278,7 @@ Deno.serve(async (req: Request) => {
     amount: parsed.amount,
     type: parsed.type,
     merchant: parsed.merchant,
+    subject: subject.trim() || null,
     bank_name: matchedAccount?.bank_name ?? "Generic",
     account_id: matchedAccount?.id ?? null,
     date: new Date().toISOString(),

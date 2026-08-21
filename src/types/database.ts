@@ -39,6 +39,7 @@ export type PendingTransaction = {
   amount: number | null;
   type: TransactionType | null;
   merchant: string | null;
+  subject: string | null;
   bank_name: string | null;
   account_id: string | null;
   raw_text: string;
