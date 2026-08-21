@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { PieChart } from "react-native-gifted-charts";
 import { colorForCategory } from "../utils/categoryColors";
 
@@ -7,31 +7,52 @@ interface CategoryAmount {
   total: number;
 }
 
+function formatAmount(value: number): string {
+  if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}m`;
+  if (value >= 1_000) return `$${(value / 1_000).toFixed(1)}k`;
+  return `$${value.toFixed(2)}`;
+}
+
 interface Props {
   title: string;
   /** Sorted descending by total; every entry must have total > 0. */
   amounts: CategoryAmount[];
   /** Every category of this type, in a fixed order — see colorForCategory. */
   orderedCategoryNames: string[];
+  onSelectCategory?: (category: string) => void;
 }
 
-export function CategoryPieChart({ title, amounts, orderedCategoryNames }: Props) {
+export function CategoryPieChart({ title, amounts, orderedCategoryNames, onSelectCategory }: Props) {
   if (amounts.length === 0) return null;
 
   const grandTotal = amounts.reduce((sum, a) => sum + a.total, 0);
   const data = amounts.map((a) => ({
     value: a.total,
     color: colorForCategory(a.category, orderedCategoryNames),
+    onPress: () => onSelectCategory?.(a.category),
   }));
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>{title}</Text>
       <View style={styles.row}>
-        <PieChart data={data} radius={72} isAnimated />
+        <PieChart
+          data={data}
+          radius={72}
+          innerRadius={48}
+          innerCircleColor="#fff"
+          isAnimated
+          centerLabelComponent={() => (
+            <Text style={styles.centerLabel}>{formatAmount(grandTotal)}</Text>
+          )}
+        />
         <View style={styles.legend}>
           {amounts.map((a) => (
-            <View key={a.category} style={styles.legendRow}>
+            <Pressable
+              key={a.category}
+              style={styles.legendRow}
+              onPress={() => onSelectCategory?.(a.category)}
+            >
               <View
                 style={[styles.dot, { backgroundColor: colorForCategory(a.category, orderedCategoryNames) }]}
               />
@@ -39,9 +60,9 @@ export function CategoryPieChart({ title, amounts, orderedCategoryNames }: Props
                 {a.category}
               </Text>
               <Text style={styles.legendPct}>
-                {grandTotal > 0 ? Math.round((a.total / grandTotal) * 100) : 0}%
+                {formatAmount(a.total)} ({grandTotal > 0 ? Math.round((a.total / grandTotal) * 100) : 0}%)
               </Text>
-            </View>
+            </Pressable>
           ))}
         </View>
       </View>
@@ -98,5 +119,10 @@ const styles = StyleSheet.create({
     color: "#9ca3af",
     fontWeight: "600",
     marginLeft: 8,
+  },
+  centerLabel: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#111827",
   },
 });

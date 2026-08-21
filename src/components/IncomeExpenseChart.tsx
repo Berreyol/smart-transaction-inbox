@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View } from "react-native";
 import { BarChart } from "react-native-gifted-charts";
+import type { TransactionType } from "../types/database";
 
 const INCOME_COLOR = "#16a34a";
 const EXPENSE_COLOR = "#dc2626";
@@ -7,14 +8,25 @@ const EXPENSE_COLOR = "#dc2626";
 interface Props {
   totalIncome: number;
   totalExpenses: number;
+  onSelectType?: (type: TransactionType) => void;
 }
 
-export function IncomeExpenseChart({ totalIncome, totalExpenses }: Props) {
+export function IncomeExpenseChart({ totalIncome, totalExpenses, onSelectType }: Props) {
   const maxValue = Math.max(totalIncome, totalExpenses, 1);
 
   const data = [
-    { value: totalIncome, label: "Income", frontColor: INCOME_COLOR },
-    { value: totalExpenses, label: "Expenses", frontColor: EXPENSE_COLOR },
+    {
+      value: totalIncome,
+      label: "Income",
+      frontColor: INCOME_COLOR,
+      onPress: () => onSelectType?.("income"),
+    },
+    {
+      value: totalExpenses,
+      label: "Expenses",
+      frontColor: EXPENSE_COLOR,
+      onPress: () => onSelectType?.("expense"),
+    },
   ];
 
   return (

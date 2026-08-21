@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { Alert, FlatList, Modal, Pressable, RefreshControl, StyleSheet, Text, TextInput, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import type { RouteProp } from "@react-navigation/native";
+import { useRoute } from "@react-navigation/native";
 import { CategoriesModal } from "../components/CategoriesModal";
 import { TransactionFormModal } from "../components/TransactionFormModal";
 import { TransactionListItem } from "../components/TransactionListItem";
+import type { RootTabParamList } from "../navigation/types";
 import { useAuthStore } from "../store/authStore";
 import { useBankAccountsStore } from "../store/bankAccountsStore";
 import { useCategoriesStore } from "../store/categoriesStore";
@@ -28,6 +31,7 @@ const SORT_LABELS: Record<SortOption, string> = {
 };
 
 export function TransactionsScreen() {
+  const route = useRoute<RouteProp<RootTabParamList, "Transactions">>();
   const userId = useAuthStore((state) => state.session?.user.id);
   const {
     items,
@@ -79,6 +83,12 @@ export function TransactionsScreen() {
     fetchBankAccounts,
     subscribeBankAccounts,
   ]);
+
+  useEffect(() => {
+    if (!route.params) return;
+    if (route.params.type) setTypeFilter(route.params.type);
+    if (route.params.category) setCategoryFilter(route.params.category);
+  }, [route.params]);
 
   const dateRange = useMemo(
     () => resolveDateRange(datePreset, customStart, customEnd),

@@ -1,14 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
-import { FlatList, Modal, Pressable, RefreshControl, StyleSheet, Text, TextInput, View } from "react-native";
+import { Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import type { NavigationProp } from "@react-navigation/native";
+import { useNavigation } from "@react-navigation/native";
 import { CategoryPieChart } from "../components/CategoryPieChart";
 import { IncomeExpenseChart } from "../components/IncomeExpenseChart";
-import { TransactionListItem } from "../components/TransactionListItem";
+import type { RootTabParamList } from "../navigation/types";
 import { useAuthStore } from "../store/authStore";
 import { useBankAccountsStore } from "../store/bankAccountsStore";
 import { useCategoriesStore } from "../store/categoriesStore";
 import { useTransactionsStore } from "../store/transactionsStore";
-import type { Transaction, TransactionType } from "../types/database";
+import type { TransactionType } from "../types/database";
 import { DATE_PRESET_LABELS, resolveDateRange, type DatePreset } from "../utils/dateFilter";
 
 type AccountFilter = "all" | string;
@@ -27,24 +29,8 @@ interface CategoryTotal {
   count: number;
 }
 
-function CategoryTotalRow({ total }: { total: CategoryTotal }) {
-  const isIncome = total.type === "income";
-  return (
-    <View style={styles.categoryRow}>
-      <View>
-        <Text style={styles.categoryName}>{total.category}</Text>
-        <Text style={styles.categoryMeta}>
-          {total.count} transaction{total.count === 1 ? "" : "s"}
-        </Text>
-      </View>
-      <Text style={[styles.categoryAmount, isIncome ? styles.amountIncome : styles.amountExpense]}>
-        {isIncome ? "+" : "-"}${total.total.toFixed(2)}
-      </Text>
-    </View>
-  );
-}
-
 export function DashboardScreen() {
+  const navigation = useNavigation<NavigationProp<RootTabParamList>>();
   const userId = useAuthStore((state) => state.session?.user.id);
   const { items, isLoading, fetchTransactions, subscribe } = useTransactionsStore();
   const categories = useCategoriesStore((state) => state.items);
@@ -154,6 +140,10 @@ export function DashboardScreen() {
     [bankAccounts, accountFilter],
   );
 
+  const goToTransactions = (type?: TransactionType, category?: string) => {
+    navigation.navigate("Transactions", { type, category });
+  };
+
   const refreshControl = (
     <RefreshControl refreshing={isLoading} onRefresh={() => userId && fetchTransactions(userId)} />
   );
@@ -217,47 +207,46 @@ export function DashboardScreen() {
       )}
 
       {viewMode === "type" ? (
-        <FlatList
+        <ScrollView
           style={styles.list}
-          data={filteredItems}
-          keyExtractor={(item) => item.id}
           contentContainerStyle={filteredItems.length === 0 && styles.emptyContainer}
           refreshControl={refreshControl}
-          ListHeaderComponent={
-            filteredItems.length > 0 ? (
-              <IncomeExpenseChart totalIncome={totalIncome} totalExpenses={totalExpenses} />
-            ) : null
-          }
-          ListEmptyComponent={emptyComponent}
-          renderItem={({ item }: { item: Transaction }) => <TransactionListItem transaction={item} />}
-        />
+        >
+          {filteredItems.length > 0 ? (
+            <IncomeExpenseChart
+              totalIncome={totalIncome}
+              totalExpenses={totalExpenses}
+              onSelectType={(type) => goToTransactions(type)}
+            />
+          ) : (
+            emptyComponent
+          )}
+        </ScrollView>
       ) : (
-        <FlatList
+        <ScrollView
           style={styles.list}
-          data={categoryTotals}
-          keyExtractor={(item) => `${item.type}:${item.category}`}
           contentContainerStyle={categoryTotals.length === 0 && styles.emptyContainer}
           refreshControl={refreshControl}
-          ListHeaderComponent={
-            categoryTotals.length > 0 ? (
-              <>
-                <CategoryPieChart
-                  title="Expenses by category"
-                  amounts={expenseTotals}
-                  orderedCategoryNames={expenseCategoryNames}
-                />
-                <CategoryPieChart
-                  title="Income by category"
-                  amounts={incomeTotals}
-                  orderedCategoryNames={incomeCategoryNames}
-                />
-                <Text style={styles.categoryHeader}>Totals by category</Text>
-              </>
-            ) : null
-          }
-          ListEmptyComponent={emptyComponent}
-          renderItem={({ item }) => <CategoryTotalRow total={item} />}
-        />
+        >
+          {categoryTotals.length > 0 ? (
+            <>
+              <CategoryPieChart
+                title="Expenses by category"
+                amounts={expenseTotals}
+                orderedCategoryNames={expenseCategoryNames}
+                onSelectCategory={(category) => goToTransactions("expense", category)}
+              />
+              <CategoryPieChart
+                title="Income by category"
+                amounts={incomeTotals}
+                orderedCategoryNames={incomeCategoryNames}
+                onSelectCategory={(category) => goToTransactions("income", category)}
+              />
+            </>
+          ) : (
+            emptyComponent
+          )}
+        </ScrollView>
       )}
 
       <Modal
@@ -480,45 +469,6 @@ const styles = StyleSheet.create({
     color: "#6b7280",
     textAlign: "center",
     lineHeight: 20,
-  },
-  categoryHeader: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#9ca3af",
-    textTransform: "uppercase",
-    marginHorizontal: 16,
-    marginTop: 16,
-    marginBottom: 4,
-  },
-  categoryRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: "#fff",
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f3f4f6",
-  },
-  categoryName: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#111827",
-  },
-  categoryMeta: {
-    fontSize: 12,
-    color: "#9ca3af",
-    marginTop: 2,
-  },
-  categoryAmount: {
-    fontSize: 15,
-    fontWeight: "700",
-  },
-  amountIncome: {
-    color: "#16a34a",
-  },
-  amountExpense: {
-    color: "#dc2626",
   },
   menuBackdrop: {
     flex: 1,

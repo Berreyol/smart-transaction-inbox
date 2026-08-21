@@ -10,8 +10,9 @@ import { TransactionsScreen } from "../screens/TransactionsScreen";
 import { useAuthStore } from "../store/authStore";
 import { useInboxStore } from "../store/inboxStore";
 import { useProfileStore } from "../store/profileStore";
+import type { RootTabParamList } from "./types";
 
-const Tab = createBottomTabNavigator();
+const Tab = createBottomTabNavigator<RootTabParamList>();
 
 function HeaderActions() {
   const userId = useAuthStore((state) => state.session?.user.id);
