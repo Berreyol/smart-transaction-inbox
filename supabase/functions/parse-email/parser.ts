@@ -13,13 +13,26 @@ export interface ParsedTransaction {
   merchant: string | null;
 }
 
+// Word-boundary lookaround used instead of \b below: JS's \b treats \w as
+// [A-Za-z0-9_] only, not Unicode letters, so a keyword ending right on an
+// accented character (e.g. "ingres[oó]" matching "Ingresó") would silently
+// never match — \b immediately after "ó" isn't a real boundary since "ó"
+// itself already reads as non-word to \b. \p{L}/\p{N} (with the /u flag)
+// make "is this a letter/digit" locale-aware instead.
+const NOT_WORD_CHAR = String.raw`(?![\p{L}\p{N}_])`;
+const NOT_WORD_CHAR_BEHIND = String.raw`(?<![\p{L}\p{N}_])`;
+
 // Keywords that indicate money leaving the account (Spanish + English banks).
-const EXPENSE_KEYWORDS =
-  /\b(retiro|cargo|compra|pago realizado|pago de|debito|d[eé]bito|spent|purchase|payment (?:made|of)|withdrawal|debit)\b/i;
+const EXPENSE_KEYWORDS = new RegExp(
+  `${NOT_WORD_CHAR_BEHIND}(retiro|cargo|compra|pago realizado|pago de|debito|d[eé]bito|spent|purchase|payment (?:made|of)|withdrawal|debit)${NOT_WORD_CHAR}`,
+  "iu",
+);
 
 // Keywords that indicate money entering the account.
-const INCOME_KEYWORDS =
-  /\b(dep[oó]sito|abono|ingreso|recibido|transferencia recibida|received|deposit|credit(ed)?|refund|reembolso)\b/i;
+const INCOME_KEYWORDS = new RegExp(
+  `${NOT_WORD_CHAR_BEHIND}(dep[oó]sito|abono|ingres[oó]|recibido|transferencia recibida|received|deposit|credit(ed)?|refund|reembolso)${NOT_WORD_CHAR}`,
+  "iu",
+);
 
 // Matches a currency amount, e.g. "$1,234.56", "€45.00", "1.234,56", "45,00 EUR", "USD 12.50"
 // Captures the numeric portion only; sign/currency symbols are stripped separately.
@@ -30,6 +43,50 @@ const AMOUNT_REGEX =
 // by a capitalized token sequence, stopping at punctuation or a trailing "por/for".
 const MERCHANT_REGEX =
   /\b(?:en|at|to|from|in)\s+([A-Z0-9][A-Za-z0-9&.,'\- ]{1,40}?)(?=\s*(?:[.,;\n]|\bpor\b|\bfor\b|\bel\s\d|\bon\s\d|\bwas\b|\bis\b|\bhas\b|\bhad\b|$))/;
+
+// ----------------------------------------------------------------------------
+// HTML/entity cleanup. Belt-and-suspenders on top of index.ts's htmlToText()
+// (which only decodes &nbsp;/&amp;) — this runs independently of whatever
+// shape the caller's text arrived in, so parser.ts stays robust even if
+// called with unprocessed HTML. Applied to the body/html before every other
+// extraction below, so a stray tag or entity sitting right next to the
+// amount (e.g. a styled `<span>` or a literal non-breaking space) can't
+// break AMOUNT_REGEX's match. Horizontal whitespace (spaces/tabs/nbsp) is
+// collapsed, but newlines are preserved — MERCHANT_REGEX uses "\n" as a stop
+// boundary.
+// ----------------------------------------------------------------------------
+
+// Named entities beyond the two htmlToText (index.ts) already decodes, plus
+// numeric entities (&#36; / &#x24;) decoded generically below.
+const NAMED_ENTITIES: Record<string, string> = {
+  "&nbsp;": " ",
+  "&amp;": "&",
+  "&lt;": "<",
+  "&gt;": ">",
+  "&quot;": '"',
+  "&#39;": "'",
+  "&apos;": "'",
+};
+
+function decodeEntity(entity: string): string {
+  const named = NAMED_ENTITIES[entity.toLowerCase()];
+  if (named) return named;
+  const numericMatch = entity.match(/^&#(x[0-9a-f]+|\d+);$/i);
+  if (!numericMatch) return "";
+  const codePoint = /^x/i.test(numericMatch[1]) ? parseInt(numericMatch[1].slice(1), 16) : parseInt(numericMatch[1], 10);
+  return Number.isFinite(codePoint) ? String.fromCodePoint(codePoint) : "";
+}
+
+function cleanEmailText(raw: string): string {
+  return raw
+    .replace(/<!--[\s\S]*?-->/g, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&(#\d+|#x[0-9a-f]+|[a-z]+);/gi, decodeEntity)
+    .replace(/[\u00a0\u200b\u200c\u200d\ufeff]/g, " ")
+    .replace(/[ \t]+/g, " ")
+    .replace(/ *\n */g, "\n")
+    .trim();
+}
 
 /**
  * Normalizes a raw amount string like "1.234,56" or "1,234.56" into a float.
@@ -103,9 +160,9 @@ export function matchBankAccount<T extends { account_alias: string }>(
  * decides whether that's still worth surfacing to the user for manual review.
  */
 export function parseTransactionEmail(text: string, subject?: string, html?: string): ParsedTransaction {
-  const body = text.replace(/\r\n/g, "\n");
+  const body = cleanEmailText(text.replace(/\r\n/g, "\n"));
 
-  const amount = extractAmount(body) ?? (html ? extractAmount(html.replace(/\r\n/g, "\n")) : null);
+  const amount = extractAmount(body) ?? (html ? extractAmount(cleanEmailText(html.replace(/\r\n/g, "\n"))) : null);
 
   const type = (subject ? detectType(subject) : null) ?? detectType(body);
 

@@ -38,8 +38,7 @@
 // ============================================================================
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
-import { matchBankAccount } from "./parser.ts";
-import { selectParser } from "./parsers/index.ts";
+import { matchBankAccount, parseTransactionEmail } from "./parser.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -246,27 +245,26 @@ Deno.serve(async (req: Request) => {
     return new Response("OK (no matching user)", { status: 200 });
   }
 
-  // 2. Pick a bank-specific parser (Strategy Pattern — see parsers/index.ts),
-  // falling back to the generic regex engine when no bank is recognized.
-  // Subject and both body variants are folded into one search string since
-  // BankParser.parse() takes a single `text` argument by design (see
-  // parsers/types.ts) — keeps every parser's signature uniform regardless of
-  // how many source fields it wants to consider.
+  // 2. Parse the email with the generic regex engine (handles known
+  // phrasings like Mercado Pago's plus a keyword+currency-pattern
+  // catch-all — see parser.ts). Subject and both body variants are folded
+  // into one search string so a single amount/keyword match can look across
+  // all of them regardless of which one the bank happened to put the data in.
   const subject = payload.subject ?? "";
   const searchText = [subject, rawText, htmlText && htmlText !== rawText ? htmlText : ""]
     .filter(Boolean)
     .join("\n");
-  const parser = selectParser(searchText, subject);
-  const parsed = parser.parse(searchText);
+  const parsed = parseTransactionEmail(searchText, subject, htmlText);
 
   // 2b. Suggest one of the user's saved bank accounts, if its alias appears
   // in the email (e.g. an account aliased "Costco Banamex" matches
   // "COSTCO BANAMEX**854" in the body) — see matchBankAccount() in parser.ts.
   // Just a suggestion the Inbox pre-fills; the user still confirms it at
-  // approval time.
+  // approval time. Also used to label bank_name, falling back to "Generic"
+  // when nothing matches.
   const { data: bankAccounts, error: bankAccountsError } = await supabase
     .from("bank_accounts")
-    .select("id, account_alias")
+    .select("id, bank_name, account_alias")
     .eq("user_id", profile.id);
 
   if (bankAccountsError) {
@@ -280,9 +278,9 @@ Deno.serve(async (req: Request) => {
     amount: parsed.amount,
     type: parsed.type,
     merchant: parsed.merchant,
-    bank_name: parser.bankName,
+    bank_name: matchedAccount?.bank_name ?? "Generic",
     account_id: matchedAccount?.id ?? null,
-    date: parsed.date,
+    date: new Date().toISOString(),
     raw_text: rawText.slice(0, 5000), // guard against pathologically large bodies
     status: "pending",
   });
