@@ -204,14 +204,16 @@ export function DashboardScreen() {
           <Text style={styles.viewSwitcherText}>{VIEW_LABELS[viewMode]}</Text>
           <Ionicons name="chevron-down" size={16} color="#4f46e5" />
         </Pressable>
-        <Pressable style={styles.iconButton} onPress={() => setDateMenuVisible(true)}>
-          <Ionicons name="calendar-outline" size={20} color="#4f46e5" />
-          {datePreset !== DEFAULT_DATE_PRESET && <View style={styles.iconBadge} />}
-        </Pressable>
-        <Pressable style={styles.iconButton} onPress={() => setAccountMenuVisible(true)}>
-          <Ionicons name="card-outline" size={20} color="#4f46e5" />
-          {accountFilter !== "all" && <View style={styles.iconBadge} />}
-        </Pressable>
+        <View style={styles.toolbarRight}>
+          <Pressable style={styles.iconButton} onPress={() => setDateMenuVisible(true)}>
+            <Ionicons name="calendar-outline" size={20} color="#4f46e5" />
+            {datePreset !== DEFAULT_DATE_PRESET && <View style={styles.iconBadge} />}
+          </Pressable>
+          <Pressable style={styles.iconButton} onPress={() => setAccountMenuVisible(true)}>
+            <Ionicons name="card-outline" size={20} color="#4f46e5" />
+            {accountFilter !== "all" && <View style={styles.iconBadge} />}
+          </Pressable>
+        </View>
       </View>
 
       {(datePreset !== DEFAULT_DATE_PRESET || accountFilter !== "all") && (
@@ -481,6 +483,10 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "700",
     color: "#4f46e5",
+  },
+  toolbarRight: {
+    flexDirection: "row",
+    gap: 4,
   },
   iconButton: {
     padding: 6,
