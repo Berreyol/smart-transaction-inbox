@@ -20,10 +20,13 @@ jobs:
           version: latest
 
       - name: Guard against dev pointing at the production project
-        if: secrets.SUPABASE_PROJECT_ID == 'qqxhqcbbgmzylwkxfhbr'
+        env:
+          SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
         run: |
-          echo "::error::supabase-dev's SUPABASE_PROJECT_ID is the production project ref. Refusing to run db push."
-          exit 1
+          if [ "$SUPABASE_PROJECT_ID" = "qqxhqcbbgmzylwkxfhbr" ]; then
+            echo "::error::supabase-dev's SUPABASE_PROJECT_ID is the production project ref. Refusing to run db push."
+            exit 1
+          fi
 
       - name: Link dev project
         run: supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_ID }}
