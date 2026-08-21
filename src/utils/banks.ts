@@ -9,5 +9,6 @@ export const SUPPORTED_BANKS = [
   "Banorte",
   "HSBC",
   "Scotiabank",
+  "Mercado Pago",
   "Other",
 ];

@@ -37,7 +37,7 @@ const MERCHANT_REGEX =
  * separator; if only a comma is present with exactly 2 trailing digits, treat
  * it as decimal (European style), otherwise treat it as a thousands separator.
  */
-function normalizeAmount(raw: string): number {
+export function normalizeAmount(raw: string): number {
   const hasComma = raw.includes(",");
   const hasDot = raw.includes(".");
 

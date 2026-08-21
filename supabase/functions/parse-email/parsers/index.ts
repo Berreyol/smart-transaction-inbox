@@ -9,9 +9,10 @@
 // ============================================================================
 import { banamexParser } from "./banamex.ts";
 import { genericBankParser } from "./generic.ts";
+import { mercadoPagoParser } from "./mercadopago.ts";
 import type { BankParser } from "./types.ts";
 
-export const PARSERS: BankParser[] = [banamexParser, genericBankParser];
+export const PARSERS: BankParser[] = [banamexParser, mercadoPagoParser, genericBankParser];
 
 /** Returns the first parser whose matchStrategy matches this email, falling back to the generic one. */
 export function selectParser(text: string, subject: string): BankParser {
