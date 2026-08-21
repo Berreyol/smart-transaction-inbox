@@ -1,4 +1,4 @@
-import { colorForCategory } from "./categoryColors";
+import { colorForCategory } from "../categoryColors";
 
 const OVERFLOW_COLOR = "#9ca3af";
 

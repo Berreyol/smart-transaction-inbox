@@ -1,5 +1,5 @@
-import { categoriesForType } from "./categories";
-import type { Category } from "../types/database";
+import { categoriesForType } from "../categories";
+import type { Category } from "../../types/database";
 
 function makeCategory(overrides: Partial<Category>): Category {
   return {

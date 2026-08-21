@@ -1,4 +1,4 @@
-import { buildForwardingAddress } from "./forwardingAddress";
+import { buildForwardingAddress } from "../forwardingAddress";
 
 describe("buildForwardingAddress", () => {
   it("inserts the token as a +tag before the @", () => {
