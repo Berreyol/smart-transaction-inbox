@@ -253,6 +253,67 @@ Deno.test("matchBankAccount - a short alias can match as a substring inside a lo
   assertEquals(result, accounts[0]);
 });
 
+Deno.test("matchBankAccount - falls back to bank_name when the alias doesn't appear in the email", () => {
+  const email = "Ir a Mercado pago\nTus $ 21,000.00 ya están disponibles";
+  const accounts = [{ id: "1", account_alias: "Wallet", bank_name: "Mercado Pago" }];
+
+  const result = matchBankAccount(email, accounts);
+
+  assertEquals(result, accounts[0]);
+});
+
+Deno.test("matchBankAccount - array order still decides the winner when one account matches by alias and an earlier one matches by bank_name", () => {
+  const email = "Cargo en COSTCO BANAMEX**854 relacionado a tu cuenta Mercado Pago";
+  const accounts = [
+    { id: "1", account_alias: "Wallet", bank_name: "Mercado Pago" },
+    { id: "2", account_alias: "Costco Banamex", bank_name: "Banamex" },
+  ];
+
+  const result = matchBankAccount(email, accounts);
+
+  // Account 2's alias ("Costco Banamex") appears in the email too, but
+  // account 1 comes first in array order and already matches via bank_name
+  // ("Mercado Pago") — find() returns it without ever reaching account 2,
+  // same array-order precedence as plain alias-vs-alias matching.
+  assertEquals(result, accounts[0]);
+});
+
+Deno.test("matchBankAccount - bank_name \"Other\" (the catch-all placeholder) never matches, even though it's a literal substring of many words", () => {
+  const email = "Se aplicó otro cargo a tu cuenta";
+  const accounts = [{ id: "1", account_alias: "Mi cuenta", bank_name: "Other" }];
+
+  const result = matchBankAccount(email, accounts);
+
+  assertEquals(result, null);
+});
+
+Deno.test("matchBankAccount - an alias literally named \"Other\" still matches normally (the placeholder guard only applies to bank_name)", () => {
+  const email = "Cargo en Other Bank Inc.";
+  const accounts = [{ id: "1", account_alias: "Other", bank_name: "Other" }];
+
+  const result = matchBankAccount(email, accounts);
+
+  assertEquals(result, accounts[0]);
+});
+
+Deno.test("matchBankAccount - bank_name matching is case-insensitive", () => {
+  const email = "Notificación de mercado pago: tu compra fue exitosa";
+  const accounts = [{ id: "1", account_alias: "Wallet", bank_name: "Mercado Pago" }];
+
+  const result = matchBankAccount(email, accounts);
+
+  assertEquals(result, accounts[0]);
+});
+
+Deno.test("matchBankAccount - an account with neither a matching alias nor a matching bank_name doesn't match", () => {
+  const email = "Cargo en OXXO por $50.00";
+  const accounts = [{ id: "1", account_alias: "Wallet", bank_name: "Mercado Pago" }];
+
+  const result = matchBankAccount(email, accounts);
+
+  assertEquals(result, null);
+});
+
 // ----------------------------------------------------------------------------
 // Mercado Pago: no bank-specific logic anymore — it's just another saved
 // bank_accounts row (bank_name "Mercado Pago"), identified via

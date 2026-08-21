@@ -129,16 +129,28 @@ export function extractAmount(source: string): number | null {
   return raw ? normalizeAmount(raw) : null;
 }
 
+// "Other" is the catch-all placeholder in the bank picker (see
+// src/utils/banks.ts) for a bank not in the supported list — it isn't a real
+// bank name, so matching on it would false-positive on almost any email
+// ("an**other** transfer", "**other** charges apply", ...). Excluded from
+// the bank_name check below; an alias literally named "Other" still matches
+// normally, since a user-chosen alias isn't a fixed placeholder string.
+const NON_MATCHING_BANK_NAME = "other";
+
 /**
  * Finds which of the user's saved bank accounts (if any) an email is for, by
- * checking whether that account's alias appears verbatim, case-insensitively,
- * anywhere in the email text — e.g. an account aliased "Costco Banamex"
- * matches a body containing "COSTCO BANAMEX**854". Returns the first match in
- * `accounts` order (callers control priority via that ordering); an
- * empty/whitespace-only alias never matches, since `"".includes("")` would
- * otherwise match everything.
+ * checking whether that account's alias, or (failing that) its bank_name,
+ * appears verbatim, case-insensitively, anywhere in the email text — e.g. an
+ * account aliased "Costco Banamex" matches a body containing "COSTCO
+ * BANAMEX**854", and an account merely named bank_name "Mercado Pago" (with
+ * an unrelated alias like "Wallet") still matches a body/subject that says
+ * "Mercado Pago" even though "Wallet" never appears in it. Alias is checked
+ * first since it's the more specific, user-chosen signal; bank_name is a
+ * fallback. Returns the first match in `accounts` order (callers control
+ * priority via that ordering); an empty/whitespace-only alias or bank_name
+ * never matches, since `"".includes("")` would otherwise match everything.
  */
-export function matchBankAccount<T extends { account_alias: string }>(
+export function matchBankAccount<T extends { account_alias: string; bank_name?: string }>(
   searchText: string,
   accounts: T[],
 ): T | null {
@@ -146,7 +158,11 @@ export function matchBankAccount<T extends { account_alias: string }>(
   return (
     accounts.find((account) => {
       const alias = account.account_alias.trim().toLowerCase();
-      return alias.length > 0 && haystack.includes(alias);
+      if (alias.length > 0 && haystack.includes(alias)) return true;
+
+      const bankName = account.bank_name?.trim().toLowerCase();
+      if (!bankName || bankName === NON_MATCHING_BANK_NAME) return false;
+      return haystack.includes(bankName);
     }) ?? null
   );
 }
