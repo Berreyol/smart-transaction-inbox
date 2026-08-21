@@ -68,7 +68,8 @@ const NAMED_ENTITIES: Record<string, string> = {
   "&apos;": "'",
 };
 
-function decodeEntity(entity: string): string {
+/** Decodes a single HTML entity match (e.g. "&nbsp;", "&#36;", "&#x24;") to its character; unknowns decode to "". */
+export function decodeEntity(entity: string): string {
   const named = NAMED_ENTITIES[entity.toLowerCase()];
   if (named) return named;
   const numericMatch = entity.match(/^&#(x[0-9a-f]+|\d+);$/i);
@@ -77,7 +78,8 @@ function decodeEntity(entity: string): string {
   return Number.isFinite(codePoint) ? String.fromCodePoint(codePoint) : "";
 }
 
-function cleanEmailText(raw: string): string {
+/** Strips tags/comments, decodes entities, and collapses horizontal whitespace (newlines preserved). */
+export function cleanEmailText(raw: string): string {
   return raw
     .replace(/<!--[\s\S]*?-->/g, " ")
     .replace(/<[^>]+>/g, " ")
@@ -113,13 +115,15 @@ export function normalizeAmount(raw: string): number {
   return Math.abs(parseFloat(cleaned));
 }
 
-function detectType(text: string): TransactionType | null {
+/** Classifies text as income/expense by keyword; expense keywords are checked first, so a text with both matches as expense. */
+export function detectType(text: string): TransactionType | null {
   if (EXPENSE_KEYWORDS.test(text)) return "expense";
   if (INCOME_KEYWORDS.test(text)) return "income";
   return null;
 }
 
-function extractAmount(source: string): number | null {
+/** Finds and normalizes the first currency amount in `source` (prefix form like "$50" or suffix form like "50 USD"). */
+export function extractAmount(source: string): number | null {
   const match = source.match(AMOUNT_REGEX);
   const raw = match?.[1] ?? match?.[2] ?? null;
   return raw ? normalizeAmount(raw) : null;
