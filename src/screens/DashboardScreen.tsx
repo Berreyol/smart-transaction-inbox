@@ -216,39 +216,37 @@ export function DashboardScreen() {
         </View>
       </View>
 
-      {(datePreset !== DEFAULT_DATE_PRESET || accountFilter !== "all") && (
-        <View style={styles.activeFilterRow}>
+      <View style={styles.activeFilterRow}>
+        <View style={styles.activeFilterChip}>
+          <Text style={styles.activeFilterText}>
+            {datePreset === "custom" && customStart && customEnd
+              ? `${customStart} – ${customEnd}`
+              : DATE_PRESET_LABELS[datePreset]}
+          </Text>
           {datePreset !== DEFAULT_DATE_PRESET && (
-            <View style={styles.activeFilterChip}>
-              <Text style={styles.activeFilterText}>
-                {datePreset === "custom" && customStart && customEnd
-                  ? `${customStart} – ${customEnd}`
-                  : DATE_PRESET_LABELS[datePreset]}
-              </Text>
-              <Pressable
-                hitSlop={8}
-                onPress={() => {
-                  setDatePreset(DEFAULT_DATE_PRESET);
-                  setCustomStart("");
-                  setCustomEnd("");
-                }}
-              >
-                <Ionicons name="close" size={14} color="#4f46e5" />
-              </Pressable>
-            </View>
-          )}
-          {accountFilter !== "all" && (
-            <View style={styles.activeFilterChip}>
-              <Text style={styles.activeFilterText}>
-                {selectedAccount ? `${selectedAccount.bank_name} — ${selectedAccount.account_alias}` : "Account"}
-              </Text>
-              <Pressable hitSlop={8} onPress={() => setAccountFilter("all")}>
-                <Ionicons name="close" size={14} color="#4f46e5" />
-              </Pressable>
-            </View>
+            <Pressable
+              hitSlop={8}
+              onPress={() => {
+                setDatePreset(DEFAULT_DATE_PRESET);
+                setCustomStart("");
+                setCustomEnd("");
+              }}
+            >
+              <Ionicons name="close" size={14} color="#4f46e5" />
+            </Pressable>
           )}
         </View>
-      )}
+        {accountFilter !== "all" && (
+          <View style={styles.activeFilterChip}>
+            <Text style={styles.activeFilterText}>
+              {selectedAccount ? `${selectedAccount.bank_name} — ${selectedAccount.account_alias}` : "Account"}
+            </Text>
+            <Pressable hitSlop={8} onPress={() => setAccountFilter("all")}>
+              <Ionicons name="close" size={14} color="#4f46e5" />
+            </Pressable>
+          </View>
+        )}
+      </View>
 
       {viewMode === "type" ? (
         <ScrollView

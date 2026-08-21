@@ -180,37 +180,35 @@ export function TransactionsScreen() {
         </View>
       </View>
 
-      {(categoryFilter !== "all" || datePreset !== DEFAULT_DATE_PRESET) && (
-        <View style={styles.activeFilterRow}>
+      <View style={styles.activeFilterRow}>
+        <View style={styles.activeFilterChip}>
+          <Text style={styles.activeFilterText}>
+            {datePreset === "custom" && customStart && customEnd
+              ? `${customStart} – ${customEnd}`
+              : DATE_PRESET_LABELS[datePreset]}
+          </Text>
           {datePreset !== DEFAULT_DATE_PRESET && (
-            <View style={styles.activeFilterChip}>
-              <Text style={styles.activeFilterText}>
-                {datePreset === "custom" && customStart && customEnd
-                  ? `${customStart} – ${customEnd}`
-                  : DATE_PRESET_LABELS[datePreset]}
-              </Text>
-              <Pressable
-                hitSlop={8}
-                onPress={() => {
-                  setDatePreset(DEFAULT_DATE_PRESET);
-                  setCustomStart("");
-                  setCustomEnd("");
-                }}
-              >
-                <Ionicons name="close" size={14} color="#4f46e5" />
-              </Pressable>
-            </View>
-          )}
-          {categoryFilter !== "all" && (
-            <View style={styles.activeFilterChip}>
-              <Text style={styles.activeFilterText}>{categoryFilter}</Text>
-              <Pressable hitSlop={8} onPress={() => setCategoryFilter("all")}>
-                <Ionicons name="close" size={14} color="#4f46e5" />
-              </Pressable>
-            </View>
+            <Pressable
+              hitSlop={8}
+              onPress={() => {
+                setDatePreset(DEFAULT_DATE_PRESET);
+                setCustomStart("");
+                setCustomEnd("");
+              }}
+            >
+              <Ionicons name="close" size={14} color="#4f46e5" />
+            </Pressable>
           )}
         </View>
-      )}
+        {categoryFilter !== "all" && (
+          <View style={styles.activeFilterChip}>
+            <Text style={styles.activeFilterText}>{categoryFilter}</Text>
+            <Pressable hitSlop={8} onPress={() => setCategoryFilter("all")}>
+              <Ionicons name="close" size={14} color="#4f46e5" />
+            </Pressable>
+          </View>
+        )}
+      </View>
 
       <FlatList
         data={visibleItems}
