@@ -170,6 +170,34 @@ npx expo run:android
 npx expo run:ios
 ```
 
+### 6. Testing against a separate dev environment
+
+Real production email traffic should stay confined to the production Supabase project — a "dev" backend is a place you intentionally break things (schema changes, resets), and real users' bank transaction data has no reason to live there. Don't fan Pipedream's production workflow out to both projects.
+
+Instead, set up a fully parallel, second stack that only you (or whoever's testing) feeds:
+
+1. Migrations and the `parse-email` deploy against the dev Supabase project are handled by the `deploy-dev` job in `.github/workflows/supabase-release.yml` (see below) rather than run by hand.
+2. Create a **second, separate Pipedream workflow** with its own Email trigger, giving you a second base inbound address distinct from production's. Point its HTTP step at the dev project's function URL with the dev `WEBHOOK_TOKEN` (the same value stored as the `DEV_WEBHOOK_TOKEN` GitHub secret below).
+3. Sign up in the app (pointed at the dev project) to get a dev `forwarding_token`, then forward real bank emails to `<dev-pipedream-base>+<your-dev-token>@...` whenever you want to exercise the parser/pipeline end-to-end with real-shaped data — this generates real Pipedream execution and real parsing, just gated to traffic you produce yourself rather than mirroring every user.
+
+For quick iteration on parser changes alone, skip Pipedream entirely and `curl` a saved sample payload straight at the dev function URL.
+
+**Pushing migrations + the function to dev from a feature branch**: the `deploy-dev` job in `supabase-release.yml` runs on manual dispatch (`target: dev`, the default) against whatever branch/ref you pick — no PR needed:
+
+```bash
+gh workflow run supabase-release.yml --ref feature/your-branch -f target=dev
+```
+
+It links the dev project, sets the `WEBHOOK_TOKEN` secret on it from the `DEV_WEBHOOK_TOKEN` GitHub Actions secret, pushes migrations, and deploys `parse-email`. One-time setup: add a `DEV_WEBHOOK_TOKEN` secret to the `supabase-dev` GitHub environment (Settings → Environments → `supabase-dev` → Secrets) with the same value you want Pipedream's dev workflow to pass as `?token=...`.
+
+**Pointing an EAS build at the right backend**: EAS cloud builds don't upload gitignored files, so `.env` alone won't reach a cloud build — `EXPO_PUBLIC_SUPABASE_URL`/`EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` need to be registered as EAS environment variables instead of (or in addition to) `.env`. `eas.json`'s `development`/`preview` build profiles are linked to an EAS environment named `development`, and `production` to one named `production`, so the right project's credentials get injected automatically per profile:
+
+```bash
+eas env:create --environment development --name EXPO_PUBLIC_SUPABASE_URL --value <dev-project-url> --visibility plaintext
+eas env:create --environment development --name EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY --value <dev-publishable-key> --visibility plaintext
+# repeat with --environment production and the prod project's values
+```
+
 ## Development
 
 ```bash
