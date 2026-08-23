@@ -43,3 +43,6 @@ yarn-error.*
 
 # supabase
 /supabase/.temp
+
+# local planning docs (not for the repo)
+/docs/monetization-plan.md

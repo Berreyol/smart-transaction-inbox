@@ -52,7 +52,7 @@ Approving a pending transaction is two writes: insert into `transactions`, delet
 
 ### Why `pending_transactions` has no client INSERT policy
 
-Anyone with the app's public anon key can call the Supabase REST API directly. If regular users could `INSERT` into `pending_transactions`, they could plant fake transactions in *anyone's* inbox (RLS on insert only stops writing rows you don't own if you explicitly check `user_id = auth.uid()` in a `WITH CHECK`, but there's no scenario where a client should be creating these rows at all). So there is no insert policy for the `authenticated` role — only the edge function, running with the `service_role` key (which bypasses RLS entirely), can create pending rows.
+Anyone with the app's public publishable key can call the Supabase REST API directly. If regular users could `INSERT` into `pending_transactions`, they could plant fake transactions in *anyone's* inbox (RLS on insert only stops writing rows you don't own if you explicitly check `user_id = auth.uid()` in a `WITH CHECK`, but there's no scenario where a client should be creating these rows at all). So there is no insert policy for the `authenticated` role — only the edge function, running with the `service_role` key (which bypasses RLS entirely), can create pending rows.
 
 ## Tech stack
 
@@ -72,7 +72,7 @@ Anyone with the app's public anon key can call the Supabase REST API directly. I
 .
 ├── App.tsx                          # Root: auth gate → AuthScreen or RootNavigator
 ├── src/
-│   ├── lib/supabase.ts              # Supabase client singleton (anon key, AsyncStorage session)
+│   ├── lib/supabase.ts              # Supabase client singleton (publishable key, AsyncStorage session)
 │   ├── store/
 │   │   ├── authStore.ts             # Zustand: session, sign in/up/out
 │   │   ├── inboxStore.ts            # Zustand: pending queue, approve/reject, Realtime subscribe
@@ -148,8 +148,8 @@ The edge function expects the raw mailparser shape Pipedream's Email trigger pro
 
 ```bash
 cp .env.example .env
-# fill in EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY
-# (anon key only — never put the service_role key in the app)
+# fill in EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+# (publishable key only — never put the service_role key in the app)
 # optionally fill in EXPO_PUBLIC_INBOUND_EMAIL_ADDRESS (the base Pipedream
 # address from step 3) so the app can display each user's full personalized
 # forwarding address instead of just their token
@@ -168,6 +168,34 @@ eas build --profile development
 # or
 npx expo run:android
 npx expo run:ios
+```
+
+### 6. Testing against a separate dev environment
+
+Real production email traffic should stay confined to the production Supabase project — a "dev" backend is a place you intentionally break things (schema changes, resets), and real users' bank transaction data has no reason to live there. Don't fan Pipedream's production workflow out to both projects.
+
+Instead, set up a fully parallel, second stack that only you (or whoever's testing) feeds:
+
+1. Migrations and the `parse-email` deploy against the dev Supabase project are handled by the `deploy-dev` job in `.github/workflows/supabase-release.yml` (see below) rather than run by hand.
+2. Create a **second, separate Pipedream workflow** with its own Email trigger, giving you a second base inbound address distinct from production's. Point its HTTP step at the dev project's function URL with the dev `WEBHOOK_TOKEN` (the same value stored as the `DEV_WEBHOOK_TOKEN` GitHub secret below).
+3. Sign up in the app (pointed at the dev project) to get a dev `forwarding_token`, then forward real bank emails to `<dev-pipedream-base>+<your-dev-token>@...` whenever you want to exercise the parser/pipeline end-to-end with real-shaped data — this generates real Pipedream execution and real parsing, just gated to traffic you produce yourself rather than mirroring every user.
+
+For quick iteration on parser changes alone, skip Pipedream entirely and `curl` a saved sample payload straight at the dev function URL.
+
+**Pushing migrations + the function to dev from a feature branch**: the `deploy-dev` job in `supabase-release.yml` runs on manual dispatch (`target: dev`, the default) against whatever branch/ref you pick — no PR needed:
+
+```bash
+gh workflow run supabase-release.yml --ref feature/your-branch -f target=dev
+```
+
+It links the dev project, sets the `WEBHOOK_TOKEN` secret on it from the `DEV_WEBHOOK_TOKEN` GitHub Actions secret, pushes migrations, and deploys `parse-email`. One-time setup: add a `DEV_WEBHOOK_TOKEN` secret to the `supabase-dev` GitHub environment (Settings → Environments → `supabase-dev` → Secrets) with the same value you want Pipedream's dev workflow to pass as `?token=...`.
+
+**Pointing an EAS build at the right backend**: EAS cloud builds don't upload gitignored files, so `.env` alone won't reach a cloud build — `EXPO_PUBLIC_SUPABASE_URL`/`EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` need to be registered as EAS environment variables instead of (or in addition to) `.env`. `eas.json`'s `development`/`preview` build profiles are linked to an EAS environment named `development`, and `production` to one named `production`, so the right project's credentials get injected automatically per profile:
+
+```bash
+eas env:create --environment development --name EXPO_PUBLIC_SUPABASE_URL --value <dev-project-url> --visibility plaintext
+eas env:create --environment development --name EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY --value <dev-publishable-key> --visibility plaintext
+# repeat with --environment production and the prod project's values
 ```
 
 ## Development

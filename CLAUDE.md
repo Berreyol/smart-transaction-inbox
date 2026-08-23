@@ -18,7 +18,7 @@ This repo has **two separate TypeScript environments that must not be conflated*
 - App code: `npx tsc --noEmit` (from repo root) and `npx expo-doctor`. Both should be clean before considering app-side work done.
 - If you add a native module, use `npx expo install <pkg>` (not plain `npm install`) — it pins the SDK-57-compatible version and applies any config plugin wiring automatically (check `git diff app.json` after).
 - Edge function: no local Deno test harness is set up. Sanity-check `supabase/functions/parse-email/parser.ts` logic with plain Node (it's dependency-free, pure regex — copy the functions into a scratch `.mjs` file and run sample strings through it) rather than trying to run the Deno handler locally.
-- A Metro bundle smoke test (`npx expo export --platform ios --output-dir <scratch-dir>`) is a good way to catch import/native-module errors that `tsc` won't — it needs a `.env` with dummy `EXPO_PUBLIC_SUPABASE_URL`/`EXPO_PUBLIC_SUPABASE_ANON_KEY` values present (the client throws early if they're missing). Delete the exported output and any `.env` you created for the test afterward — don't commit either.
+- A Metro bundle smoke test (`npx expo export --platform ios --output-dir <scratch-dir>`) is a good way to catch import/native-module errors that `tsc` won't — it needs a `.env` with dummy `EXPO_PUBLIC_SUPABASE_URL`/`EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` values present (the client throws early if they're missing). Delete the exported output and any `.env` you created for the test afterward — don't commit either.
 
 ## The `Database` type gotcha (already fixed, don't reintroduce)
 
@@ -33,7 +33,7 @@ If a new Supabase query starts complaining that some plainly-correct object "is 
 
 - `pending_transactions` has **no client-facing INSERT policy** on purpose. Only the edge function (via `service_role`, which bypasses RLS) creates these rows. If a feature seems to need the app to insert directly into `pending_transactions`, that's a sign the feature should go through a new edge function or RPC instead — don't add an insert policy as a shortcut.
 - The `approve_pending_transaction` RPC (`supabase/migrations/0002_...sql`) is `SECURITY INVOKER`, not `SECURITY DEFINER` — it runs as the calling user and is subject to normal RLS. Keep it that way; there's no reason for this specific operation to need elevated privileges, and switching to `SECURITY DEFINER` would need its own `auth.uid()` re-validation to stay safe.
-- The app's `.env` must only ever hold the Supabase **anon** key. `EXPO_PUBLIC_*` vars are inlined into the client JS bundle at build time — the `service_role` key must never carry that prefix or appear anywhere under `/src`.
+- The app's `.env` must only ever hold the Supabase **publishable** key. `EXPO_PUBLIC_*` vars are inlined into the client JS bundle at build time — the `service_role` key must never carry that prefix or appear anywhere under `/src`.
 
 ## Conventions in this codebase
 
