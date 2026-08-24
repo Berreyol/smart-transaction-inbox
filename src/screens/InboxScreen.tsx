@@ -2,16 +2,17 @@ import { useEffect, useState } from "react";
 import { Alert, FlatList, RefreshControl, StyleSheet, Text, View } from "react-native";
 import { BankAccountPickerModal } from "../components/BankAccountPickerModal";
 import { CategoryModal } from "../components/CategoryModal";
+import { EditPendingTransactionModal } from "../components/EditPendingTransactionModal";
 import { PendingTransactionCard } from "../components/PendingTransactionCard";
 import { useAuthStore } from "../store/authStore";
 import { useBankAccountsStore } from "../store/bankAccountsStore";
 import { useCategoriesStore } from "../store/categoriesStore";
 import { useInboxStore } from "../store/inboxStore";
-import type { PendingTransaction } from "../types/database";
+import type { PendingTransaction, PendingTransactionEdits } from "../types/database";
 
 export function InboxScreen() {
   const userId = useAuthStore((state) => state.session?.user.id);
-  const { items, isLoading, fetchPending, approve, reject, subscribe } = useInboxStore();
+  const { items, isLoading, fetchPending, approve, reject, update, subscribe } = useInboxStore();
   const categories = useCategoriesStore((state) => state.items);
   const fetchCategories = useCategoriesStore((state) => state.fetchCategories);
   const subscribeCategories = useCategoriesStore((state) => state.subscribe);
@@ -20,6 +21,7 @@ export function InboxScreen() {
   const subscribeBankAccounts = useBankAccountsStore((state) => state.subscribe);
   const [approvingItem, setApprovingItem] = useState<PendingTransaction | null>(null);
   const [pendingCategory, setPendingCategory] = useState<string | null>(null);
+  const [editingItem, setEditingItem] = useState<PendingTransaction | null>(null);
 
   useEffect(() => {
     if (!userId) return;
@@ -82,6 +84,16 @@ export function InboxScreen() {
     }
   };
 
+  const handleEditSave = async (edits: PendingTransactionEdits) => {
+    if (!editingItem) return;
+    const pendingId = editingItem.id;
+    setEditingItem(null);
+    const success = await update(pendingId, edits);
+    if (!success) {
+      Alert.alert("Couldn't save changes", "Something went wrong — please try again.");
+    }
+  };
+
   return (
     <View style={styles.container}>
       <FlatList
@@ -105,8 +117,15 @@ export function InboxScreen() {
             matchedAccount={bankAccounts.find((account) => account.id === item.account_id) ?? null}
             onApprove={() => setApprovingItem(item)}
             onReject={() => handleReject(item)}
+            onEdit={() => setEditingItem(item)}
           />
         )}
+      />
+
+      <EditPendingTransactionModal
+        item={editingItem}
+        onSave={handleEditSave}
+        onClose={() => setEditingItem(null)}
       />
 
       <CategoryModal

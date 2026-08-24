@@ -12,9 +12,10 @@ interface Props {
   matchedAccount: BankAccount | null;
   onApprove: () => void;
   onReject: () => void;
+  onEdit: () => void;
 }
 
-export function PendingTransactionCard({ item, matchedAccount, onApprove, onReject }: Props) {
+export function PendingTransactionCard({ item, matchedAccount, onApprove, onReject, onEdit }: Props) {
   const canApprove = item.amount !== null && item.type !== null;
   const displayText = item.merchant?.trim() || item.subject?.trim() || item.raw_text;
   const snippet =
@@ -49,13 +50,16 @@ export function PendingTransactionCard({ item, matchedAccount, onApprove, onReje
 
       {!canApprove && (
         <Text style={styles.warning}>
-          Couldn't detect the amount or type — reject this and enter it manually.
+          Couldn't detect the amount or type — tap Edit to fill it in.
         </Text>
       )}
 
       <View style={styles.actions}>
         <Pressable style={[styles.button, styles.rejectButton]} onPress={onReject}>
           <Text style={styles.rejectButtonText}>Reject</Text>
+        </Pressable>
+        <Pressable style={[styles.button, styles.editButton]} onPress={onEdit}>
+          <Text style={styles.editButtonText}>Edit</Text>
         </Pressable>
         <Pressable
           style={[styles.button, styles.approveButton, !canApprove && styles.buttonDisabled]}
@@ -164,6 +168,13 @@ const styles = StyleSheet.create({
   },
   rejectButtonText: {
     color: "#374151",
+    fontWeight: "600",
+  },
+  editButton: {
+    backgroundColor: "#eef2ff",
+  },
+  editButtonText: {
+    color: "#4338ca",
     fontWeight: "600",
   },
   approveButton: {

@@ -48,6 +48,13 @@ export type PendingTransaction = {
   created_at: string;
 };
 
+/** User-supplied corrections applied to a pending transaction before approval. */
+export type PendingTransactionEdits = {
+  amount: number | null;
+  type: TransactionType | null;
+  merchant: string | null;
+};
+
 export type Category = {
   id: string;
   user_id: string;
