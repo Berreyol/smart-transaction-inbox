@@ -1,16 +1,22 @@
 // ============================================================================
 // State for the Smart Transaction Inbox: the list of pending_transactions
-// awaiting user review, plus approve/reject actions.
+// awaiting user review, plus approve/reject/update actions.
 //
 // Approve calls the `approve_pending_transaction` RPC (see
 // supabase/migrations/0002_approve_pending_transaction.sql) so the move into
 // `transactions` and the removal from `pending_transactions` happen as one
 // atomic server-side operation. Reject is a plain delete — nothing else
-// depends on that row existing.
+// depends on that row existing. Update lets the user correct amount/type/
+// merchant before approving (e.g. when the parser couldn't confidently
+// extract them) — this is a plain UPDATE under the existing "Users can
+// update own pending transactions" RLS policy (see 0001_init.sql), not a new
+// mutation path, and intentionally not folded into approve_pending_transaction
+// since an edit that saves but isn't immediately approved is still a valid,
+// non-corrupt state (unlike the insert+delete pair approve makes atomic).
 // ============================================================================
 import { create } from "zustand";
 import { supabase } from "../lib/supabase";
-import type { PendingTransaction } from "../types/database";
+import type { PendingTransaction, PendingTransactionEdits } from "../types/database";
 
 interface InboxState {
   items: PendingTransaction[];
@@ -19,6 +25,7 @@ interface InboxState {
   fetchPending: (userId: string) => Promise<void>;
   approve: (pendingId: string, category: string, accountId: string | null) => Promise<boolean>;
   reject: (pendingId: string) => Promise<boolean>;
+  update: (pendingId: string, edits: PendingTransactionEdits) => Promise<boolean>;
   /** Subscribes to realtime changes on this user's pending queue. Returns an unsubscribe function. */
   subscribe: (userId: string) => () => void;
 }
@@ -57,6 +64,23 @@ export const useInboxStore = create<InboxState>((set, get) => ({
     }
 
     set({ items: get().items.filter((item) => item.id !== pendingId) });
+    return true;
+  },
+
+  update: async (pendingId: string, edits: PendingTransactionEdits) => {
+    const { data, error } = await supabase
+      .from("pending_transactions")
+      .update(edits)
+      .eq("id", pendingId)
+      .select()
+      .single();
+
+    if (error) {
+      set({ error: error.message });
+      return false;
+    }
+
+    set({ items: get().items.map((item) => (item.id === pendingId ? data : item)) });
     return true;
   },
 
