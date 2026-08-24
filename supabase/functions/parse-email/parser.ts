@@ -39,10 +39,13 @@ const INCOME_KEYWORDS = new RegExp(
 const AMOUNT_REGEX =
   /(?:USD|EUR|MXN|COP|ARS|CLP|\$|€|£)\s?(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?)|(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?)\s?(?:USD|EUR|MXN|COP|ARS|CLP|PESOS|D[OÓ]LARES)/i;
 
-// Merchant name is typically introduced by "en", "at", "to", "from", "in" followed
-// by a capitalized token sequence, stopping at punctuation or a trailing "por/for".
+// Merchant name is typically introduced by "en", "at", "to", "from", "in", or a
+// "Establecimiento"/"Stablishment" field label, followed by a capitalized token
+// sequence, stopping at punctuation or a trailing "por/for". The label form
+// commonly has a colon (e.g. "Establecimiento: XYZ"), hence the optional `:?`;
+// case-insensitive since labels are usually capitalized, unlike the prepositions.
 const MERCHANT_REGEX =
-  /\b(?:en|at|to|from|in)\s+([A-Z0-9][A-Za-z0-9&.,'\- ]{1,40}?)(?=\s*(?:[.,;\n]|\bpor\b|\bfor\b|\bel\s\d|\bon\s\d|\bwas\b|\bis\b|\bhas\b|\bhad\b|$))/;
+  /\b(?:en|at|to|from|in|establecimiento|stablishment):?\s+([A-Z0-9][A-Za-z0-9&.,'\- ]{1,40}?)(?=\s*(?:[.,;\n]|\bpor\b|\bfor\b|\bel\s\d|\bon\s\d|\bwas\b|\bis\b|\bhas\b|\bhad\b|$))/i;
 
 // ----------------------------------------------------------------------------
 // HTML/entity cleanup. Belt-and-suspenders on top of index.ts's htmlToText()
