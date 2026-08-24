@@ -180,7 +180,7 @@ Instead, set up a fully parallel, second stack that only you (or whoever's testi
 2. Create a **second, separate Pipedream workflow** with its own Email trigger, giving you a second base inbound address distinct from production's. Point its HTTP step at the dev project's function URL with the dev `WEBHOOK_TOKEN` (the same value stored as the `DEV_WEBHOOK_TOKEN` GitHub secret below).
 3. Sign up in the app (pointed at the dev project) to get a dev `forwarding_token`, then forward real bank emails to `<dev-pipedream-base>+<your-dev-token>@...` whenever you want to exercise the parser/pipeline end-to-end with real-shaped data — this generates real Pipedream execution and real parsing, just gated to traffic you produce yourself rather than mirroring every user.
 
-For quick iteration on parser changes alone, skip Pipedream entirely and `curl` a saved sample payload straight at the dev function URL.
+For quick iteration on parser changes alone, skip Pipedream entirely and `curl` a saved sample payload straight at the dev function URL — or use `scripts/seed-pending-transaction.mjs`, which does exactly that with a few built-in scenarios (unparseable, fully-parseable, partially-parseable) so the Inbox always has realistic pending rows to test against. Needs `TEST_WEBHOOK_TOKEN` and `TEST_USER_FORWARDING_TOKEN` in `.env` (see `.env.example` and the script's header comment) — both unprefixed so they never reach the app bundle. Refuses to run if `EXPO_PUBLIC_SUPABASE_URL` points at production.
 
 **Pushing migrations + the function to dev from a feature branch**: the `deploy-dev` job in `supabase-release.yml` runs on manual dispatch (`target: dev`, the default) against whatever branch/ref you pick — no PR needed:
 
