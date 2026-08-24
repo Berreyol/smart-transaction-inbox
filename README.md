@@ -159,7 +159,7 @@ cp .env.example .env
 
 Push tokens require an EAS project:
 ```bash
-eas init   # writes extra.eas.projectId into app.json
+eas init   # links this repo to an EAS project (projectId lives in app.config.ts's extra.eas.projectId)
 ```
 
 **Push notifications don't work in Expo Go on SDK 53+.** Test with a development build:
@@ -196,6 +196,13 @@ It links the dev project, sets the `WEBHOOK_TOKEN` secret on it from the `DEV_WE
 eas env:create --environment development --name EXPO_PUBLIC_SUPABASE_URL --value <dev-project-url> --visibility plaintext
 eas env:create --environment development --name EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY --value <dev-publishable-key> --visibility plaintext
 # repeat with --environment production and the prod project's values
+```
+
+**Installing dev and prod side by side on the same device**: `app.config.ts` (not a static `app.json`) branches `bundleIdentifier`/`package`/`name` on `process.env.APP_VARIANT`, which `eas.json`'s `development`/`preview` profiles set to `"development"`. That gives a `development`-profile build a distinct identifier (`com.berreyol.smarttransactioninbox.dev`, named "Smart Transaction Inbox (Dev)") from a prod-pointed build (`com.berreyol.smarttransactioninbox`) — installing one won't overwrite the other, so you can keep a stable prod app for daily use and a dev app for testing on the same phone. The dev variant's bundle/package ID needs registering as its own App ID with your Apple Developer / Google Play account the first time you build it.
+
+For an installable (non-App-Store) build pointed at production — e.g. to use as your own daily-use app before ever submitting to the App Store — use the `internal-prod` profile rather than `production` (which defaults to `store` distribution, meant for TestFlight/App Store submission, not direct install):
+```bash
+eas build --profile internal-prod --platform ios
 ```
 
 ## Development

@@ -55,7 +55,7 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
   }
 
   // EAS project ID is required to mint an Expo push token from SDK 49+.
-  // Set via `eas init`, which writes it to app.json's extra.eas.projectId.
+  // Set via `eas init`, which writes it to app.config.ts's extra.eas.projectId.
   const projectId =
     Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
 

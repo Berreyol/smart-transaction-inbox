@@ -16,7 +16,8 @@ This repo has **two separate TypeScript environments that must not be conflated*
 ## Verifying changes
 
 - App code: `npx tsc --noEmit` (from repo root) and `npx expo-doctor`. Both should be clean before considering app-side work done.
-- If you add a native module, use `npx expo install <pkg>` (not plain `npm install`) — it pins the SDK-57-compatible version and applies any config plugin wiring automatically (check `git diff app.json` after).
+- If you add a native module, use `npx expo install <pkg>` (not plain `npm install`) — it pins the SDK-57-compatible version and applies any config plugin wiring automatically (check `git diff app.config.ts` after).
+- App config is `app.config.ts` (dynamic), not a static `app.json` — there is no `app.json` in this repo. It branches `bundleIdentifier`/`package`/`name` on `process.env.APP_VARIANT` so a `development`-profile EAS build installs as a separate app ("...Dev") alongside a `production`-profile build on the same device, rather than overwriting it. `APP_VARIANT` is set per build profile in `eas.json`, not in `.env`.
 - Edge function: no local Deno test harness is set up. Sanity-check `supabase/functions/parse-email/parser.ts` logic with plain Node (it's dependency-free, pure regex — copy the functions into a scratch `.mjs` file and run sample strings through it) rather than trying to run the Deno handler locally.
 - A Metro bundle smoke test (`npx expo export --platform ios --output-dir <scratch-dir>`) is a good way to catch import/native-module errors that `tsc` won't — it needs a `.env` with dummy `EXPO_PUBLIC_SUPABASE_URL`/`EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` values present (the client throws early if they're missing). Delete the exported output and any `.env` you created for the test afterward — don't commit either.
 
