@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import {
+  InputAccessoryView,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -24,6 +26,12 @@ interface Props {
   onSubmit: (input: TransactionInput) => Promise<boolean>;
   onClose: () => void;
 }
+
+// iOS's "decimal-pad" keyboard has no built-in Done/Return key, so without
+// this there's no way to dismiss it short of closing the whole form.
+// InputAccessoryView is iOS-only (unsupported on Android, which doesn't need
+// it — its numeric keyboards include a dismiss affordance already).
+const AMOUNT_ACCESSORY_ID = "transaction-form-amount-accessory";
 
 export function TransactionFormModal({ visible, transaction, onSubmit, onClose }: Props) {
   const categories = useCategoriesStore((state) => state.items);
@@ -118,7 +126,17 @@ export function TransactionFormModal({ visible, transaction, onSubmit, onClose }
             placeholder="0.00"
             value={amount}
             onChangeText={setAmount}
+            inputAccessoryViewID={Platform.OS === "ios" ? AMOUNT_ACCESSORY_ID : undefined}
           />
+          {Platform.OS === "ios" && (
+            <InputAccessoryView nativeID={AMOUNT_ACCESSORY_ID}>
+              <View style={styles.accessory}>
+                <Pressable onPress={() => Keyboard.dismiss()}>
+                  <Text style={styles.accessoryDone}>Done</Text>
+                </Pressable>
+              </View>
+            </InputAccessoryView>
+          )}
 
           <Text style={styles.label}>Category</Text>
           <Pressable style={styles.input} onPress={() => setCategoryPickerVisible(true)}>
@@ -294,5 +312,19 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: "#6b7280",
     fontWeight: "600",
+  },
+  accessory: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: "#f3f4f6",
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "#d1d5db",
+  },
+  accessoryDone: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#4f46e5",
   },
 });
