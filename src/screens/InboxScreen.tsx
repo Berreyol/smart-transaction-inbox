@@ -9,10 +9,12 @@ import { useBankAccountsStore } from "../store/bankAccountsStore";
 import { useCategoriesStore } from "../store/categoriesStore";
 import { useInboxStore } from "../store/inboxStore";
 import type { PendingTransaction, PendingTransactionEdits } from "../types/database";
+import { normalizeMerchantKey } from "../utils/merchant";
 
 export function InboxScreen() {
   const userId = useAuthStore((state) => state.session?.user.id);
-  const { items, isLoading, fetchPending, approve, reject, update, subscribe } = useInboxStore();
+  const { items, suggestions, isLoading, fetchPending, fetchSuggestions, approve, reject, update, subscribe } =
+    useInboxStore();
   const categories = useCategoriesStore((state) => state.items);
   const fetchCategories = useCategoriesStore((state) => state.fetchCategories);
   const subscribeCategories = useCategoriesStore((state) => state.subscribe);
@@ -26,6 +28,7 @@ export function InboxScreen() {
   useEffect(() => {
     if (!userId) return;
     fetchPending(userId);
+    fetchSuggestions(userId);
     const unsubscribe = subscribe(userId);
     fetchCategories(userId);
     const unsubscribeCategories = subscribeCategories(userId);
@@ -39,12 +42,17 @@ export function InboxScreen() {
   }, [
     userId,
     fetchPending,
+    fetchSuggestions,
     subscribe,
     fetchCategories,
     subscribeCategories,
     fetchBankAccounts,
     subscribeBankAccounts,
   ]);
+
+  const suggestedCategory = approvingItem
+    ? suggestions[normalizeMerchantKey(approvingItem.merchant) ?? ""] ?? null
+    : null;
 
   const handleReject = (item: PendingTransaction) => {
     Alert.alert("Reject transaction?", "This can't be undone.", [
@@ -132,6 +140,7 @@ export function InboxScreen() {
         visible={approvingItem !== null && pendingCategory === null}
         type={approvingItem?.type ?? null}
         categories={categories}
+        suggestedCategory={suggestedCategory}
         onSelect={handleCategorySelected}
         onClose={() => setApprovingItem(null)}
       />

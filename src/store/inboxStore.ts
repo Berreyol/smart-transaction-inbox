@@ -20,9 +20,12 @@ import type { PendingTransaction, PendingTransactionEdits } from "../types/datab
 
 interface InboxState {
   items: PendingTransaction[];
+  /** merchant_key -> last category chosen for that merchant, from merchant_category_map. */
+  suggestions: Record<string, string>;
   isLoading: boolean;
   error: string | null;
   fetchPending: (userId: string) => Promise<void>;
+  fetchSuggestions: (userId: string) => Promise<void>;
   approve: (pendingId: string, category: string, accountId: string | null) => Promise<boolean>;
   reject: (pendingId: string) => Promise<boolean>;
   update: (pendingId: string, edits: PendingTransactionEdits) => Promise<boolean>;
@@ -32,6 +35,7 @@ interface InboxState {
 
 export const useInboxStore = create<InboxState>((set, get) => ({
   items: [],
+  suggestions: {},
   isLoading: false,
   error: null,
 
@@ -51,7 +55,23 @@ export const useInboxStore = create<InboxState>((set, get) => ({
     set({ items: data ?? [], isLoading: false });
   },
 
+  fetchSuggestions: async (userId: string) => {
+    const { data, error } = await supabase
+      .from("merchant_category_map")
+      .select("merchant_key, category")
+      .eq("user_id", userId);
+
+    if (error || !data) return;
+
+    const suggestions: Record<string, string> = {};
+    for (const row of data) {
+      suggestions[row.merchant_key] = row.category;
+    }
+    set({ suggestions });
+  },
+
   approve: async (pendingId: string, category: string, accountId: string | null) => {
+    const approvedItem = get().items.find((item) => item.id === pendingId);
     const { error } = await supabase.rpc("approve_pending_transaction", {
       p_pending_id: pendingId,
       p_category: category,
@@ -64,6 +84,12 @@ export const useInboxStore = create<InboxState>((set, get) => ({
     }
 
     set({ items: get().items.filter((item) => item.id !== pendingId) });
+    // Approving just upserted merchant_category_map server-side (see
+    // approve_pending_transaction) — refresh so the next matching pending
+    // transaction picks up the new/updated suggestion.
+    if (approvedItem) {
+      get().fetchSuggestions(approvedItem.user_id);
+    }
     return true;
   },
 
