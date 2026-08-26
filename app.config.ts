@@ -11,7 +11,7 @@ const config: ExpoConfig = {
   slug: "smart-transaction-inbox",
   version: "1.0.0",
   orientation: "portrait",
-  icon: "./assets/icon.png",
+  icon: IS_DEV ? "./assets/icon-dev.png" : "./assets/icon.png",
   userInterfaceStyle: "light",
   ios: {
     supportsTablet: true,
