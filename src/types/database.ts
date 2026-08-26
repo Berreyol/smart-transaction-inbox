@@ -71,6 +71,15 @@ export type BankAccount = {
   created_at: string;
 };
 
+/** merchant_key is the normalized (trimmed, lowercased) merchant string. */
+export type MerchantCategoryMap = {
+  id: string;
+  user_id: string;
+  merchant_key: string;
+  category: string;
+  updated_at: string;
+};
+
 /**
  * Row shapes keyed by table name, for use with a typed Supabase client.
  * `Views`/`Functions`/`Enums`/`CompositeTypes` are required (even empty) to
@@ -111,6 +120,13 @@ export type Database = {
         Row: BankAccount;
         Insert: Partial<BankAccount> & Pick<BankAccount, "user_id" | "bank_name" | "account_alias">;
         Update: Partial<BankAccount>;
+        Relationships: [];
+      };
+      merchant_category_map: {
+        Row: MerchantCategoryMap;
+        Insert: Partial<MerchantCategoryMap> &
+          Pick<MerchantCategoryMap, "user_id" | "merchant_key" | "category">;
+        Update: Partial<MerchantCategoryMap>;
         Relationships: [];
       };
     };

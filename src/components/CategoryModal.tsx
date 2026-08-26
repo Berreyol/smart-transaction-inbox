@@ -6,19 +6,45 @@ interface Props {
   visible: boolean;
   type: TransactionType | null;
   categories: Category[];
+  /** Previously-chosen category for this merchant (see merchant_category_map), if any. */
+  suggestedCategory?: string | null;
   onSelect: (category: string) => void;
   onClose: () => void;
 }
 
-export function CategoryModal({ visible, type, categories, onSelect, onClose }: Props) {
-  const options = categoriesForType(categories, type);
+export function CategoryModal({
+  visible,
+  type,
+  categories,
+  suggestedCategory,
+  onSelect,
+  onClose,
+}: Props) {
+  const allOptions = categoriesForType(categories, type);
+  const hasSuggestion = !!suggestedCategory && allOptions.some((c) => c.name === suggestedCategory);
+  const options = hasSuggestion
+    ? allOptions.filter((c) => c.name !== suggestedCategory)
+    : allOptions;
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose}>
         <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
           <Text style={styles.title}>Choose a category</Text>
-          {options.length === 0 && (
+          {hasSuggestion && (
+            <>
+              <Text style={styles.suggestedLabel}>Suggested (used last time for this merchant)</Text>
+              <Pressable
+                style={[styles.option, styles.suggestedOption]}
+                onPress={() => onSelect(suggestedCategory as string)}
+              >
+                <Text style={[styles.optionText, styles.suggestedOptionText]}>
+                  {suggestedCategory}
+                </Text>
+              </Pressable>
+            </>
+          )}
+          {options.length === 0 && !hasSuggestion && (
             <Text style={styles.optionText}>No categories yet — add one from Transactions.</Text>
           )}
           {options.map((category) => (
@@ -65,6 +91,24 @@ const styles = StyleSheet.create({
   optionText: {
     fontSize: 16,
     color: "#111827",
+  },
+  suggestedLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#4f46e5",
+    textTransform: "uppercase",
+    marginBottom: 6,
+  },
+  suggestedOption: {
+    backgroundColor: "#eef2ff",
+    borderRadius: 8,
+    borderBottomWidth: 0,
+    paddingHorizontal: 12,
+    marginBottom: 12,
+  },
+  suggestedOptionText: {
+    fontWeight: "700",
+    color: "#4338ca",
   },
   cancel: {
     paddingVertical: 14,
