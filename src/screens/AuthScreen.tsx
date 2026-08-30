@@ -38,7 +38,7 @@ export function AuthScreen() {
       style={styles.container}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      <Text style={styles.title}>Smart Transaction Inbox</Text>
+      <Text style={styles.title}>Berry Cash</Text>
       <Text style={styles.subtitle}>
         {mode === "signIn" ? "Sign in to continue" : "Create an account"}
       </Text>
