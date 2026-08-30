@@ -18,19 +18,6 @@
         "resourceClass": "medium"
       }
     },
-    "preview": {
-      "distribution": "internal",
-      "environment": "development",
-      "env": {
-        "APP_VARIANT": "development"
-      },
-      "ios": {
-        "resourceClass": "m-medium"
-      },
-      "android": {
-        "resourceClass": "medium"
-      }
-    },
     "internal-prod": {
       "distribution": "internal",
       "environment": "production",
