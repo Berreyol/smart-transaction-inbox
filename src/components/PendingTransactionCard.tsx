@@ -17,7 +17,7 @@ interface Props {
 
 export function PendingTransactionCard({ item, matchedAccount, onApprove, onReject, onEdit }: Props) {
   const canApprove = item.amount !== null && item.type !== null;
-  const displayText = item.merchant?.trim() || item.subject?.trim() || item.raw_text;
+  const displayText = item.subject?.trim() || item.raw_text;
   const snippet =
     displayText.length > SNIPPET_LENGTH
       ? `${displayText.slice(0, SNIPPET_LENGTH).trim()}…`
@@ -34,7 +34,6 @@ export function PendingTransactionCard({ item, matchedAccount, onApprove, onReje
         )}
       </View>
 
-      {item.bank_name && <Text style={styles.bankName}>{item.bank_name}</Text>}
       {item.merchant && <Text style={styles.merchant}>{item.merchant}</Text>}
       {matchedAccount && (
         <View style={styles.matchedAccount}>
@@ -111,13 +110,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "600",
     color: "#111827",
-  },
-  bankName: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#4f46e5",
-    textTransform: "uppercase",
-    marginTop: 8,
   },
   merchant: {
     fontSize: 15,
