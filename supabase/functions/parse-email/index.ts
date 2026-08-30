@@ -254,7 +254,7 @@ Deno.serve(async (req: Request) => {
   const searchText = [subject, rawText, htmlText && htmlText !== rawText ? htmlText : ""]
     .filter(Boolean)
     .join("\n");
-  const parsed = parseTransactionEmail(searchText, subject, htmlText);
+  const parsed = parseTransactionEmail(searchText, subject, payload.html);
 
   // 2b. Suggest one of the user's saved bank accounts, if its alias appears
   // in the email (e.g. an account aliased "Costco Banamex" matches

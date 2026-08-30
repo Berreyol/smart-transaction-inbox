@@ -45,7 +45,7 @@ const AMOUNT_REGEX =
 // commonly has a colon (e.g. "Establecimiento: XYZ"), hence the optional `:?`;
 // case-insensitive since labels are usually capitalized, unlike the prepositions.
 const MERCHANT_REGEX =
-  /\b(?:en|at|to|from|in|establecimiento|stablishment):?\s+([A-Z0-9][A-Za-z0-9&.,'\- ]{1,40}?)(?=\s*(?:[.,;\n]|\bpor\b|\bfor\b|\bel\s\d|\bon\s\d|\bwas\b|\bis\b|\bhas\b|\bhad\b|$))/i;
+  /\b(?:en|at|to|from|in|establecimiento|stablishment):?\s+([A-Z0-9][A-Za-z0-9&.,'*\- ]{1,40}?)(?=\s*(?:[.,;\n]|\bpor\b|\bfor\b|\bel\s\d|\bon\s\d|\bwas\b|\bis\b|\bhas\b|\bhad\b|$))/i;
 
 // ----------------------------------------------------------------------------
 // HTML/entity cleanup. Belt-and-suspenders on top of index.ts's htmlToText()
@@ -81,10 +81,21 @@ export function decodeEntity(entity: string): string {
   return Number.isFinite(codePoint) ? String.fromCodePoint(codePoint) : "";
 }
 
-/** Strips tags/comments, decodes entities, and collapses horizontal whitespace (newlines preserved). */
+/**
+ * Strips tags/comments, decodes entities, and collapses horizontal whitespace
+ * (newlines preserved). Block-level tags (`<td>`, `<tr>`, `<p>`, `<br>`, ...)
+ * are converted to newlines rather than spaces before the rest of the tags
+ * are stripped: many bank templates lay out label/value pairs (e.g.
+ * "Establecimiento" / merchant name) in adjacent table cells with no literal
+ * newline in the raw HTML source, so without this, stripping every tag to a
+ * plain space would run a field's label straight into its value and into the
+ * next field's label with nothing separating them \u2014 silently breaking
+ * MERCHANT_REGEX, which relies on "\n" as one of its stop boundaries.
+ */
 export function cleanEmailText(raw: string): string {
   return raw
     .replace(/<!--[\s\S]*?-->/g, " ")
+    .replace(/<br\s*\/?>|<\/?(?:td|tr|table|p|div|li|h[1-6])(?:\s[^>]*)?>/gi, "\n")
     .replace(/<[^>]+>/g, " ")
     .replace(/&(#\d+|#x[0-9a-f]+|[a-z]+);/gi, decodeEntity)
     .replace(/[\u00a0\u200b\u200c\u200d\ufeff]/g, " ")
@@ -175,21 +186,23 @@ export function matchBankAccount<T extends { account_alias: string; bank_name?: 
  * looked up in the subject line first — bank notification subjects ("Aviso
  * de depósito", "You made a purchase") tend to state it more reliably than
  * the body — falling back to the body if the subject doesn't yield a match.
- * Amount is looked up in the plain-text body first, falling back to the
- * HTML-derived body if given — some bank templates render the amount inside
- * markup (e.g. a styled `<span>`) that doesn't survive into the mail
- * provider's plain-text part, so the amount only shows up in the HTML.
+ * Amount and merchant are each looked up in the plain-text body first,
+ * falling back to the HTML-derived body if given — some bank templates
+ * render a field (e.g. the amount inside a styled `<span>`, or the merchant
+ * in a table cell) that doesn't survive into the mail provider's plain-text
+ * part at all, so that field only shows up in the HTML.
  * Returns nulls for any field it can't confidently detect; the caller
  * decides whether that's still worth surfacing to the user for manual review.
  */
 export function parseTransactionEmail(text: string, subject?: string, html?: string): ParsedTransaction {
   const body = cleanEmailText(text.replace(/\r\n/g, "\n"));
+  const htmlBody = html ? cleanEmailText(html.replace(/\r\n/g, "\n")) : null;
 
-  const amount = extractAmount(body) ?? (html ? extractAmount(cleanEmailText(html.replace(/\r\n/g, "\n"))) : null);
+  const amount = extractAmount(body) ?? (htmlBody ? extractAmount(htmlBody) : null);
 
   const type = (subject ? detectType(subject) : null) ?? detectType(body);
 
-  const merchantMatch = body.match(MERCHANT_REGEX);
+  const merchantMatch = body.match(MERCHANT_REGEX) ?? (htmlBody ? htmlBody.match(MERCHANT_REGEX) : null);
   const merchant = merchantMatch?.[1]?.trim() ?? null;
 
   return { amount, type, merchant };

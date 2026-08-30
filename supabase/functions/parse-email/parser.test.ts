@@ -383,3 +383,113 @@ Deno.test("parseTransactionEmail - a literal non-breaking space (not just the &n
   assertEquals(result.amount, 500);
   assertEquals(result.merchant, "OXXO");
 });
+
+Deno.test("parseTransactionEmail - falls back to the HTML body for merchant when the plain-text body has no match (regression: Banamex sends an empty text part)", () => {
+  const html =
+    '<table><tr><td><p>Monto</p></td><td><p><b>$632.50</b></p></td></tr>' +
+    '<tr><td><p>Establecimiento</p></td><td><p><b>MITSPUG*REST CASA REGITLA</b></p></td></tr>' +
+    '<tr><td><p>Fecha y hora</p></td><td><p><b>2026/08/29 12:36:39 PM</b></p></td></tr></table>';
+
+  const result = parseTransactionEmail("", "Retiro/Compra con tarjeta Banamex", html);
+
+  assertEquals(result.amount, 632.5);
+  assertEquals(result.type, "expense");
+  assertEquals(result.merchant, "MITSPUG*REST CASA REGITLA");
+});
+
+Deno.test("parseTransactionEmail - merchant match in the plain-text body wins over the HTML body when both are present", () => {
+  const result = parseTransactionEmail("Cargo en OXXO por $50.00", undefined, "<p>Establecimiento</p><p>COSTCO</p>");
+
+  assertEquals(result.merchant, "OXXO");
+});
+
+Deno.test("cleanEmailText - converts block-level tag boundaries to newlines instead of spaces (regression: table cells with no literal newline in the source ran a field's label into its value and the next label)", () => {
+  const html = "<table><tr><td>Establecimiento</td><td>MITSPUG*REST CASA REGITLA</td></tr><tr><td>Fecha</td></tr></table>";
+
+  // Adjacent tags (</td><td>, </tr><tr>) each contribute their own newline,
+  // so runs of blank lines are expected here — the exact count is
+  // incidental to markup structure, not a contract. What matters is that
+  // each field ends up on its own line with no blank-line collapsing that
+  // would merge it into a neighbor.
+  const lines = cleanEmailText(html).split("\n").filter(Boolean);
+  assertEquals(lines, ["Establecimiento", "MITSPUG*REST CASA REGITLA", "Fecha"]);
+});
+
+// ----------------------------------------------------------------------------
+// HTML-structure regression: amount and merchant separated by real markup.
+//
+// index.ts passes payload.html (the *raw* HTML, tags and all) as parser.ts's
+// `html` argument — not its own pre-flattened htmlToText() output — so
+// cleanEmailText()'s tag handling above is what actually runs on production
+// bank emails. These tests each embed the amount and merchant fields inside
+// different real-world tag structures to confirm both values keep resolving
+// correctly regardless of what HTML sits between (and inside) them.
+// ----------------------------------------------------------------------------
+
+Deno.test("parseTransactionEmail (HTML) - amount and merchant in separate table rows, each nested in <p><b>", () => {
+  // Same shape as the real Banamex "Retiro/Compra" template: a two-column
+  // table where every label and every value is its own <td><p><b>...</b></p>,
+  // and the whole document is one unbroken line with no literal newlines.
+  const html =
+    "<table>" +
+    "<tr><td><p>Monto</p></td><td><p><b>$1,250.00</b></p></td></tr>" +
+    "<tr><td><p>Establecimiento</p></td><td><p><b>WALMART*SUPERCENTER</b></p></td></tr>" +
+    "<tr><td><p>Fecha y hora</p></td><td><p><b>2026/08/29 10:00:00 AM</b></p></td></tr>" +
+    "</table>";
+
+  const result = parseTransactionEmail("", "Retiro/Compra con tarjeta", html);
+
+  assertEquals(result.amount, 1250);
+  assertEquals(result.merchant, "WALMART*SUPERCENTER");
+});
+
+Deno.test("parseTransactionEmail (HTML) - amount and merchant on the same line, separated only by inline tags (<span>/<b>), still resolve independently", () => {
+  const html = 'Cargo por <span style="color:red"><b>$75.30</b></span> en <b><span>OXXO*TIENDA</span></b>.';
+
+  const result = parseTransactionEmail("", undefined, html);
+
+  assertEquals(result.amount, 75.3);
+  assertEquals(result.merchant, "OXXO*TIENDA");
+});
+
+Deno.test("parseTransactionEmail (HTML) - amount and merchant separated by a <div> block and a <br>, with an HTML comment sitting between them", () => {
+  const html =
+    "<div>Monto: <b>$99.99</b></div>" +
+    "<!-- internal tracking pixel --><br>" +
+    "<div>Comercio: <b>STARBUCKS*DOWNTOWN</b></div>";
+
+  const result = parseTransactionEmail("", undefined, html);
+
+  assertEquals(result.amount, 99.99);
+  // "Comercio" isn't one of MERCHANT_REGEX's label keywords, so this
+  // documents current behavior (merchant comes back null here) rather than
+  // asserting extraction that isn't implemented — the point of this test is
+  // that the amount from the OTHER field still resolves cleanly even though
+  // an unrelated field, a comment, and a <br> sit between them.
+  assertEquals(result.merchant, null);
+});
+
+Deno.test("parseTransactionEmail (HTML) - amount and merchant each nested several tags deep inside adjacent table cells with masked-card asterisks and HTML entities", () => {
+  const html =
+    "<table><tbody>" +
+    "<tr><td><span><p>Monto</p></span></td><td><div><p><b>&#36;2,048.75</b></p></div></td></tr>" +
+    "<tr><td><span><p>Establecimiento</p></span></td><td><div><p><b>AMZN*MKTP MX</b></p></div></td></tr>" +
+    "</tbody></table>";
+
+  const result = parseTransactionEmail("", undefined, html);
+
+  assertEquals(result.amount, 2048.75);
+  assertEquals(result.merchant, "AMZN*MKTP MX");
+});
+
+Deno.test("parseTransactionEmail (HTML) - falls back to HTML for both amount and merchant when the plain-text part is present but doesn't mention either", () => {
+  const text = "Tu estado de cuenta ya está disponible para consulta.";
+  const html =
+    "<table><tr><td><p>Monto</p></td><td><p><b>$430.00</b></p></td></tr>" +
+    "<tr><td><p>Establecimiento</p></td><td><p><b>COSTCO WHOLESALE</b></p></td></tr></table>";
+
+  const result = parseTransactionEmail(text, undefined, html);
+
+  assertEquals(result.amount, 430);
+  assertEquals(result.merchant, "COSTCO WHOLESALE");
+});
