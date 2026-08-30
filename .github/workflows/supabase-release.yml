@@ -135,5 +135,7 @@ jobs:
         run: supabase db push --password "${{ secrets.SUPABASE_DB_PASSWORD }}"
 
       - name: Deploy parse-email function
-        if: github.event_name == 'push' && needs.changes.outputs.function == 'true'
+        if: |
+          github.event_name == 'workflow_dispatch' ||
+          (github.event_name == 'push' && needs.changes.outputs.function == 'true')
         run: supabase functions deploy parse-email --project-ref ${{ secrets.SUPABASE_PROJECT_ID }}

@@ -7,7 +7,7 @@ import type { ExpoConfig } from "expo/config";
 const IS_DEV = process.env.APP_VARIANT === "development";
 
 const config: ExpoConfig = {
-  name: IS_DEV ? "Smart Transaction Inbox (Dev)" : "Smart Transaction Inbox",
+  name: IS_DEV ? "Berry Cash (Dev)" : "Berry Cash",
   slug: "smart-transaction-inbox",
   version: "1.0.0",
   orientation: "portrait",
