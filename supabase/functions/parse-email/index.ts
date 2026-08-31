@@ -194,8 +194,7 @@ Deno.serve(async (req: Request) => {
     return new Response("Missing sender", { status: 400 });
   }
 
-  // 1. Identify the user: forwarding_token first (see above for where it's
-  // read from), From-header email as a fallback.
+  // 1. Identify the user: forwarding_token 
   type ProfileRow = { id: string; expo_push_token: string | null };
   let profile: ProfileRow | null = null;
 
