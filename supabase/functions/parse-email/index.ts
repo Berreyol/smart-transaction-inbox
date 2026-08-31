@@ -9,17 +9,10 @@
 //
 // Identifying the user: every profile has a forwarding_token (see migration
 // 0006), and the app shows each user a personalized address of the form
-// base+<token>@pipedream.net. We try that token first, read out of (in
-// order) the X-Forwarded-To header, then the `to` address, then fall back
-// to matching From by email. Three sources because forwarding mechanisms
-// disagree on what ends up where: an auto-forward *filter rule* routes at
-// the SMTP level to the personalized address but typically leaves the
-// message's own To: header as the original recipient — the destination
-// only shows up in X-Forwarded-To (added by the relay) — while a manual
-// "Forward" doesn't add that header at all, but does put the personalized
-// address in `to` (since it's the actual recipient of the new message) and
-// rewrites From to the forwarder's own address, which is what the final
-// fallback catches.
+// base+<token>@pipedream.net. We try that token first, read out of the
+// X-Forwarded-To header, then fall back to matching From by email — the
+// token is only ever carried in X-Forwarded-To, never in the message's own
+// `to` address.
 //
 // Expected Pipedream workflow setup:
 //   1. Trigger: "Email" (Pipedream mints a unique inbound address; users
@@ -194,7 +187,8 @@ Deno.serve(async (req: Request) => {
     return new Response("Missing sender", { status: 400 });
   }
 
-  // 1. Identify the user: forwarding_token 
+  // 1. Identify the user: forwarding_token first (see above for where it's
+  // read from), From-header email as a fallback.
   type ProfileRow = { id: string; expo_push_token: string | null };
   let profile: ProfileRow | null = null;
 
