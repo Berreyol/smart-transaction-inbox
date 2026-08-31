@@ -180,19 +180,10 @@ Deno.serve(async (req: Request) => {
   }
 
   const senderEmail = extractAddress(payload.from);
-  // X-Forwarded-To first: auto-forward rules (Gmail's "Forwarding and
-  // POP/IMAP" included) route to it at the SMTP level but typically leave
-  // the message's own To: header as the original recipient, so `to` alone
-  // would miss the personalized address entirely for that setup. Manual
-  // "Forward" doesn't add this header, hence falling back to `to`. Each
-  // source is tried independently for a token — a present-but-unhelpful
-  // X-Forwarded-To (e.g. no "+tag" on it) still falls through to `to`,
-  // rather than only falling back when the header is missing outright.
   const xForwardedTo = getHeader(payload, "x-forwarded-to");
-  const toAddress = extractAddress(payload.to);
-  const forwardingToken =
-    (xForwardedTo ? extractForwardingToken(extractEmail(xForwardedTo)) : null) ??
-    (toAddress ? extractForwardingToken(toAddress) : null);
+  const forwardingToken = xForwardedTo
+    ? extractForwardingToken(extractEmail(xForwardedTo))
+    : null;
   const htmlText = payload.html ? htmlToText(payload.html) : "";
   const rawText = payload.text?.trim() || htmlText;
 
@@ -203,8 +194,7 @@ Deno.serve(async (req: Request) => {
     return new Response("Missing sender", { status: 400 });
   }
 
-  // 1. Identify the user: forwarding_token first (see above for where it's
-  // read from), From-header email as a fallback.
+  // 1. Identify the user: forwarding_token 
   type ProfileRow = { id: string; expo_push_token: string | null };
   let profile: ProfileRow | null = null;
 
@@ -293,11 +283,10 @@ Deno.serve(async (req: Request) => {
 
   // 4. Notify the user's device, if we have a push token on file.
   if (profile.expo_push_token) {
-    const amountLabel = parsed.amount ? ` ($${parsed.amount.toFixed(2)})` : "";
-    await sendExpoPushNotification(
-      profile.expo_push_token,
-      `New transaction detected${amountLabel}! Tap to review.`,
-    );
+    const amountLabel = parsed.amount != null ? `$${parsed.amount.toFixed(2)}` : "";
+    const detail = parsed.merchant ?? matchedAccount?.account_alias ?? null;
+    const body = detail ? `${detail} ${amountLabel}`.trim() : amountLabel;
+    await sendExpoPushNotification(profile.expo_push_token, body);
   }
 
   return new Response("OK", { status: 200 });
