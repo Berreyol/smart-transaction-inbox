@@ -1,0 +1,13 @@
+{
+  "accountMenu": {
+    "settings": "Settings"
+  },
+  "settings": {
+    "title": "Settings",
+    "language": "Language",
+    "languageDescription": "Choose the language used throughout the app.",
+    "languageEnglish": "English",
+    "languageSpanish": "Español",
+    "languageSystem": "System default"
+  }
+}

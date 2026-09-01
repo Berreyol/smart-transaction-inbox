@@ -2,17 +2,20 @@ import { useEffect } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { NavigationContainer } from "@react-navigation/native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { StyleSheet, View } from "react-native";
 import { AccountMenu } from "../components/AccountMenu";
 import { DashboardScreen } from "../screens/DashboardScreen";
 import { InboxScreen } from "../screens/InboxScreen";
+import { SettingsScreen } from "../screens/SettingsScreen";
 import { TransactionsScreen } from "../screens/TransactionsScreen";
 import { useAuthStore } from "../store/authStore";
 import { useInboxStore } from "../store/inboxStore";
 import { useProfileStore } from "../store/profileStore";
-import type { RootTabParamList } from "./types";
+import type { RootStackParamList, RootTabParamList } from "./types";
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
+const Stack = createNativeStackNavigator<RootStackParamList>();
 
 function HeaderActions() {
   const userId = useAuthStore((state) => state.session?.user.id);
@@ -35,41 +38,50 @@ function InboxTabIcon({ color, size }: { color: string; size: number }) {
   );
 }
 
+function MainTabs() {
+  return (
+    <Tab.Navigator
+      screenOptions={{
+        headerRight: () => <HeaderActions />,
+        tabBarActiveTintColor: "#4f46e5",
+      }}
+    >
+      <Tab.Screen
+        name="Inbox"
+        component={InboxScreen}
+        options={{
+          tabBarIcon: ({ color, size }) => <InboxTabIcon color={color} size={size} />,
+        }}
+      />
+      <Tab.Screen
+        name="Transactions"
+        component={TransactionsScreen}
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="list-outline" color={color} size={size} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Dashboard"
+        component={DashboardScreen}
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="bar-chart-outline" color={color} size={size} />
+          ),
+        }}
+      />
+    </Tab.Navigator>
+  );
+}
+
 export function RootNavigator() {
   return (
     <NavigationContainer>
-      <Tab.Navigator
-        screenOptions={{
-          headerRight: () => <HeaderActions />,
-          tabBarActiveTintColor: "#4f46e5",
-        }}
-      >
-        <Tab.Screen
-          name="Inbox"
-          component={InboxScreen}
-          options={{
-            tabBarIcon: ({ color, size }) => <InboxTabIcon color={color} size={size} />,
-          }}
-        />
-        <Tab.Screen
-          name="Transactions"
-          component={TransactionsScreen}
-          options={{
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="list-outline" color={color} size={size} />
-            ),
-          }}
-        />
-        <Tab.Screen
-          name="Dashboard"
-          component={DashboardScreen}
-          options={{
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="bar-chart-outline" color={color} size={size} />
-            ),
-          }}
-        />
-      </Tab.Navigator>
+      <Stack.Navigator>
+        <Stack.Screen name="Main" component={MainTabs} options={{ headerShown: false }} />
+        <Stack.Screen name="Settings" component={SettingsScreen} />
+      </Stack.Navigator>
     </NavigationContainer>
   );
 }

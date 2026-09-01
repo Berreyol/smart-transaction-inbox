@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Linking, Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import type { RootStackParamList } from "../navigation/types";
 import { useAuthStore } from "../store/authStore";
 import { useBankAccountsStore } from "../store/bankAccountsStore";
 import { AccountsModal } from "./AccountsModal";
@@ -10,6 +14,8 @@ const LINKEDIN_URL = process.env.EXPO_PUBLIC_LINKEDIN_URL;
 const GITHUB_REPO_URL = process.env.EXPO_PUBLIC_GITHUB_REPO_URL;
 
 export function AccountMenu() {
+  const { t } = useTranslation();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const userId = useAuthStore((state) => state.session?.user.id);
   const signOut = useAuthStore((state) => state.signOut);
   const fetchBankAccounts = useBankAccountsStore((state) => state.fetchBankAccounts);
@@ -33,6 +39,11 @@ export function AccountMenu() {
   const openAccounts = () => {
     setMenuVisible(false);
     setAccountsVisible(true);
+  };
+
+  const openSettings = () => {
+    setMenuVisible(false);
+    navigation.navigate("Settings");
   };
 
   const openLinkedIn = () => {
@@ -72,6 +83,11 @@ export function AccountMenu() {
             <Pressable style={styles.row} onPress={openAccounts}>
               <Ionicons name="card-outline" size={20} color="#4f46e5" />
               <Text style={styles.rowText}>Bank accounts</Text>
+            </Pressable>
+
+            <Pressable style={styles.row} onPress={openSettings}>
+              <Ionicons name="settings-outline" size={20} color="#4f46e5" />
+              <Text style={styles.rowText}>{t("accountMenu.settings")}</Text>
             </Pressable>
 
             <View style={styles.divider} />

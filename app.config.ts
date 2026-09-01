@@ -37,7 +37,7 @@ const config: ExpoConfig = {
   web: {
     favicon: "./assets/favicon.png",
   },
-  plugins: ["expo-notifications", "expo-font"],
+  plugins: ["expo-notifications", "expo-font", "expo-localization"],
   extra: {
     eas: {
       projectId: "31549ac4-c3f2-4cdd-b865-28a32852e10b",
