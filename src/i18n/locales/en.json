@@ -17,6 +17,11 @@
     "loading": "Loading…",
     "cantBeUndone": "This can't be undone."
   },
+  "nav": {
+    "inbox": "Inbox",
+    "transactions": "Transactions",
+    "dashboard": "Dashboard"
+  },
   "accountMenu": {
     "forwardingAddress": "Forwarding address",
     "bankAccounts": "Bank accounts",

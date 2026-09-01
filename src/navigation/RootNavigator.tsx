@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { NavigationContainer } from "@react-navigation/native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
@@ -39,6 +40,7 @@ function InboxTabIcon({ color, size }: { color: string; size: number }) {
 }
 
 function MainTabs() {
+  const { t } = useTranslation();
   return (
     <Tab.Navigator
       screenOptions={{
@@ -50,6 +52,8 @@ function MainTabs() {
         name="Inbox"
         component={InboxScreen}
         options={{
+          title: t("nav.inbox"),
+          tabBarLabel: t("nav.inbox"),
           tabBarIcon: ({ color, size }) => <InboxTabIcon color={color} size={size} />,
         }}
       />
@@ -57,6 +61,8 @@ function MainTabs() {
         name="Transactions"
         component={TransactionsScreen}
         options={{
+          title: t("nav.transactions"),
+          tabBarLabel: t("nav.transactions"),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="list-outline" color={color} size={size} />
           ),
@@ -66,6 +72,8 @@ function MainTabs() {
         name="Dashboard"
         component={DashboardScreen}
         options={{
+          title: t("nav.dashboard"),
+          tabBarLabel: t("nav.dashboard"),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="bar-chart-outline" color={color} size={size} />
           ),
@@ -78,7 +86,7 @@ function MainTabs() {
 export function RootNavigator() {
   return (
     <NavigationContainer>
-      <Stack.Navigator>
+      <Stack.Navigator screenOptions={{ headerBackButtonDisplayMode: "minimal" }}>
         <Stack.Screen name="Main" component={MainTabs} options={{ headerShown: false }} />
         <Stack.Screen name="Settings" component={SettingsScreen} />
       </Stack.Navigator>

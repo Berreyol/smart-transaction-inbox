@@ -17,6 +17,11 @@
     "loading": "Cargando…",
     "cantBeUndone": "Esto no se puede deshacer."
   },
+  "nav": {
+    "inbox": "Bandeja",
+    "transactions": "Transacciones",
+    "dashboard": "Panel"
+  },
   "accountMenu": {
     "forwardingAddress": "Dirección de reenvío",
     "bankAccounts": "Cuentas bancarias",
