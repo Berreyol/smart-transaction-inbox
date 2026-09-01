@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Modal, Pressable, StyleSheet, Text } from "react-native";
 import type { BankAccount } from "../types/database";
 
@@ -9,15 +10,16 @@ interface Props {
 }
 
 export function BankAccountPickerModal({ visible, accounts, onSelect, onClose }: Props) {
+  const { t } = useTranslation();
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose}>
         <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
-          <Text style={styles.title}>Assign to an account</Text>
-          <Text style={styles.subtitle}>Optional — you can skip this and add it later.</Text>
+          <Text style={styles.title}>{t("bankAccountPicker.title")}</Text>
+          <Text style={styles.subtitle}>{t("bankAccountPicker.subtitle")}</Text>
 
           <Pressable style={styles.option} onPress={() => onSelect(null)}>
-            <Text style={styles.optionText}>No account</Text>
+            <Text style={styles.optionText}>{t("bankAccountPicker.noAccount")}</Text>
           </Pressable>
           {accounts.map((account) => (
             <Pressable key={account.id} style={styles.option} onPress={() => onSelect(account.id)}>
@@ -27,7 +29,7 @@ export function BankAccountPickerModal({ visible, accounts, onSelect, onClose }:
           ))}
 
           <Pressable style={styles.cancel} onPress={onClose}>
-            <Text style={styles.cancelText}>Cancel</Text>
+            <Text style={styles.cancelText}>{t("common.cancel")}</Text>
           </Pressable>
         </Pressable>
       </Pressable>

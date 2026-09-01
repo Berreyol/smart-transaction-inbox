@@ -6,3 +6,8 @@ export type RootTabParamList = {
   Transactions: { type?: TransactionType; category?: string; date?: string } | undefined;
   Dashboard: undefined;
 };
+
+export type RootStackParamList = {
+  Main: undefined;
+  Settings: undefined;
+};

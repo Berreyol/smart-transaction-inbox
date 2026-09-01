@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { categoriesForType } from "../utils/categories";
 import type { Category, TransactionType } from "../types/database";
@@ -20,6 +21,7 @@ export function CategoryModal({
   onSelect,
   onClose,
 }: Props) {
+  const { t } = useTranslation();
   const allOptions = categoriesForType(categories, type);
   const hasSuggestion = !!suggestedCategory && allOptions.some((c) => c.name === suggestedCategory);
   const options = hasSuggestion
@@ -30,10 +32,10 @@ export function CategoryModal({
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose}>
         <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
-          <Text style={styles.title}>Choose a category</Text>
+          <Text style={styles.title}>{t("common.chooseCategory")}</Text>
           {hasSuggestion && (
             <>
-              <Text style={styles.suggestedLabel}>Suggested (used last time for this merchant)</Text>
+              <Text style={styles.suggestedLabel}>{t("categoryPicker.suggestedLabel")}</Text>
               <Pressable
                 style={[styles.option, styles.suggestedOption]}
                 onPress={() => onSelect(suggestedCategory as string)}
@@ -45,7 +47,7 @@ export function CategoryModal({
             </>
           )}
           {options.length === 0 && !hasSuggestion && (
-            <Text style={styles.optionText}>No categories yet — add one from Transactions.</Text>
+            <Text style={styles.optionText}>{t("categoryPicker.empty")}</Text>
           )}
           {options.map((category) => (
             <Pressable
@@ -57,7 +59,7 @@ export function CategoryModal({
             </Pressable>
           ))}
           <Pressable style={styles.cancel} onPress={onClose}>
-            <Text style={styles.cancelText}>Cancel</Text>
+            <Text style={styles.cancelText}>{t("common.cancel")}</Text>
           </Pressable>
         </Pressable>
       </Pressable>

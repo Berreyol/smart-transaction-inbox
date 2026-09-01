@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuthStore } from "../store/authStore";
@@ -19,6 +20,7 @@ function CategorySection({
   type: TransactionType;
   categories: Category[];
 }) {
+  const { t } = useTranslation();
   const userId = useAuthStore((state) => state.session?.user.id);
   const addCategory = useCategoriesStore((state) => state.addCategory);
   const renameCategory = useCategoriesStore((state) => state.renameCategory);
@@ -32,7 +34,7 @@ function CategorySection({
     if (!userId || !newName.trim()) return;
     const success = await addCategory(userId, newName.trim(), type);
     if (success) setNewName("");
-    else Alert.alert("Couldn't add category", "It might already exist.");
+    else Alert.alert(t("categories.addFailedTitle"), t("categories.addFailedMessage"));
   };
 
   const startEdit = (category: Category) => {
@@ -49,9 +51,9 @@ function CategorySection({
   };
 
   const handleDelete = (category: Category) => {
-    Alert.alert("Delete category?", `"${category.name}" won't affect transactions that already use it.`, [
-      { text: "Cancel", style: "cancel" },
-      { text: "Delete", style: "destructive", onPress: () => deleteCategory(category.id) },
+    Alert.alert(t("categories.deleteTitle"), t("categories.deleteMessage", { name: category.name }), [
+      { text: t("common.cancel"), style: "cancel" },
+      { text: t("common.delete"), style: "destructive", onPress: () => deleteCategory(category.id) },
     ]);
   };
 
@@ -82,7 +84,9 @@ function CategorySection({
       <View style={styles.addRow}>
         <TextInput
           style={styles.addInput}
-          placeholder={`New ${type} category`}
+          placeholder={t("categories.newCategoryPlaceholder", {
+            type: type === "expense" ? t("common.expense") : t("common.income"),
+          })}
           value={newName}
           onChangeText={setNewName}
           onSubmitEditing={handleAdd}
@@ -96,6 +100,7 @@ function CategorySection({
 }
 
 export function CategoriesModal({ visible, onClose }: Props) {
+  const { t } = useTranslation();
   const categories = useCategoriesStore((state) => state.items);
   const expenseCategories = categories.filter((c) => c.type === "expense");
   const incomeCategories = categories.filter((c) => c.type === "income");
@@ -104,14 +109,14 @@ export function CategoriesModal({ visible, onClose }: Props) {
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
       <View style={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.title}>Categories</Text>
+          <Text style={styles.title}>{t("categories.title")}</Text>
           <Pressable onPress={onClose} hitSlop={12}>
-            <Text style={styles.done}>Done</Text>
+            <Text style={styles.done}>{t("common.done")}</Text>
           </Pressable>
         </View>
         <ScrollView contentContainerStyle={styles.scrollContent}>
-          <CategorySection title="Expense" type="expense" categories={expenseCategories} />
-          <CategorySection title="Income" type="income" categories={incomeCategories} />
+          <CategorySection title={t("common.expense")} type="expense" categories={expenseCategories} />
+          <CategorySection title={t("common.income")} type="income" categories={incomeCategories} />
         </ScrollView>
       </View>
     </Modal>

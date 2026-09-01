@@ -4,14 +4,8 @@ export type DatePreset = "all" | "today" | "7d" | "30d" | "month" | "custom";
 /** Screens open scoped to the current month rather than "All time". */
 export const DEFAULT_DATE_PRESET: DatePreset = "month";
 
-export const DATE_PRESET_LABELS: Record<DatePreset, string> = {
-  all: "All time",
-  today: "Today",
-  "7d": "Last 7 days",
-  "30d": "Last 30 days",
-  month: "This month",
-  custom: "Custom range",
-};
+/** Fixed render order for the date-preset menu; labels come from i18n (see the "dateFilter" namespace). */
+export const DATE_PRESET_ORDER: DatePreset[] = ["all", "today", "7d", "30d", "month", "custom"];
 
 export const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 

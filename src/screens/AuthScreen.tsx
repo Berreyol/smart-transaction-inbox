@@ -7,6 +7,7 @@
 // beyond basics; the Inbox/Dashboard screens get the real design pass.
 // ============================================================================
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -20,6 +21,7 @@ import {
 import { useAuthStore } from "../store/authStore";
 
 export function AuthScreen() {
+  const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [mode, setMode] = useState<"signIn" | "signUp">("signIn");
@@ -38,14 +40,14 @@ export function AuthScreen() {
       style={styles.container}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      <Text style={styles.title}>Berry Cash</Text>
+      <Text style={styles.title}>{t("auth.title")}</Text>
       <Text style={styles.subtitle}>
-        {mode === "signIn" ? "Sign in to continue" : "Create an account"}
+        {mode === "signIn" ? t("auth.subtitleSignIn") : t("auth.subtitleSignUp")}
       </Text>
 
       <TextInput
         style={styles.input}
-        placeholder="Email"
+        placeholder={t("auth.emailPlaceholder")}
         autoCapitalize="none"
         autoComplete="email"
         keyboardType="email-address"
@@ -54,7 +56,7 @@ export function AuthScreen() {
       />
       <TextInput
         style={styles.input}
-        placeholder="Password"
+        placeholder={t("auth.passwordPlaceholder")}
         secureTextEntry
         autoCapitalize="none"
         value={password}
@@ -71,15 +73,13 @@ export function AuthScreen() {
         {isSubmitting ? (
           <ActivityIndicator color="#fff" />
         ) : (
-          <Text style={styles.buttonText}>{mode === "signIn" ? "Sign In" : "Sign Up"}</Text>
+          <Text style={styles.buttonText}>{mode === "signIn" ? t("auth.signIn") : t("auth.signUp")}</Text>
         )}
       </Pressable>
 
       <Pressable onPress={() => setMode(mode === "signIn" ? "signUp" : "signIn")}>
         <Text style={styles.switchModeText}>
-          {mode === "signIn"
-            ? "Need an account? Sign up"
-            : "Already have an account? Sign in"}
+          {mode === "signIn" ? t("auth.switchToSignUp") : t("auth.switchToSignIn")}
         </Text>
       </Pressable>
     </KeyboardAvoidingView>

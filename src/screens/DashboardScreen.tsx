@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import type { NavigationProp } from "@react-navigation/native";
@@ -16,7 +17,7 @@ import { useDateFilterStore } from "../store/dateFilterStore";
 import { useTransactionsStore } from "../store/transactionsStore";
 import type { TransactionType } from "../types/database";
 import {
-  DATE_PRESET_LABELS,
+  DATE_PRESET_ORDER,
   daySpan,
   DEFAULT_DATE_PRESET,
   resolveDateRange,
@@ -27,11 +28,6 @@ type AccountFilter = "all" | string;
 
 type ViewMode = "type" | "category";
 
-const VIEW_LABELS: Record<ViewMode, string> = {
-  type: "Income vs Expense",
-  category: "By category",
-};
-
 interface CategoryTotal {
   category: string;
   type: TransactionType;
@@ -40,6 +36,19 @@ interface CategoryTotal {
 }
 
 export function DashboardScreen() {
+  const { t } = useTranslation();
+  const VIEW_LABELS: Record<ViewMode, string> = {
+    type: t("dashboard.viewIncomeExpense"),
+    category: t("dashboard.viewByCategory"),
+  };
+  const DATE_PRESET_LABELS: Record<DatePreset, string> = {
+    all: t("dateFilter.all"),
+    today: t("dateFilter.today"),
+    "7d": t("dateFilter.7d"),
+    "30d": t("dateFilter.30d"),
+    month: t("dateFilter.month"),
+    custom: t("dateFilter.custom"),
+  };
   const navigation = useNavigation<NavigationProp<RootTabParamList>>();
   const userId = useAuthStore((state) => state.session?.user.id);
   const { items, isLoading, fetchTransactions, subscribe } = useTransactionsStore();
@@ -192,8 +201,8 @@ export function DashboardScreen() {
 
   const emptyComponent = (
     <View style={styles.empty}>
-      <Text style={styles.emptyTitle}>No transactions yet</Text>
-      <Text style={styles.emptySubtitle}>Approved transactions from your Inbox will show up here.</Text>
+      <Text style={styles.emptyTitle}>{t("dashboard.emptyTitle")}</Text>
+      <Text style={styles.emptySubtitle}>{t("dashboard.emptySubtitle")}</Text>
     </View>
   );
 
@@ -239,7 +248,9 @@ export function DashboardScreen() {
         {accountFilter !== "all" && (
           <View style={styles.activeFilterChip}>
             <Text style={styles.activeFilterText}>
-              {selectedAccount ? `${selectedAccount.bank_name} — ${selectedAccount.account_alias}` : "Account"}
+              {selectedAccount
+                ? `${selectedAccount.bank_name} — ${selectedAccount.account_alias}`
+                : t("dashboard.accountFallback")}
             </Text>
             <Pressable hitSlop={8} onPress={() => setAccountFilter("all")}>
               <Ionicons name="close" size={14} color="#4f46e5" />
@@ -295,13 +306,13 @@ export function DashboardScreen() {
           {categoryTotals.length > 0 ? (
             <>
               <CategoryPieChart
-                title="Expenses by category"
+                title={t("dashboard.expensesByCategory")}
                 amounts={expenseTotals}
                 orderedCategoryNames={expenseCategoryNames}
                 onSelectCategory={(category) => goToTransactions("expense", category)}
               />
               <CategoryPieChart
-                title="Income by category"
+                title={t("dashboard.incomeByCategory")}
                 amounts={incomeTotals}
                 orderedCategoryNames={incomeCategoryNames}
                 onSelectCategory={(category) => goToTransactions("income", category)}
@@ -321,7 +332,7 @@ export function DashboardScreen() {
       >
         <Pressable style={styles.menuBackdrop} onPress={() => setAccountMenuVisible(false)}>
           <View style={styles.menu}>
-            <Text style={styles.menuTitle}>Account</Text>
+            <Text style={styles.menuTitle}>{t("dashboard.accountTitle")}</Text>
             <Pressable
               style={styles.menuOption}
               onPress={() => {
@@ -330,13 +341,13 @@ export function DashboardScreen() {
               }}
             >
               <Text style={[styles.menuOptionText, accountFilter === "all" && styles.menuOptionTextActive]}>
-                All accounts
+                {t("dashboard.allAccounts")}
               </Text>
               {accountFilter === "all" && <Ionicons name="checkmark" size={16} color="#4f46e5" />}
             </Pressable>
 
             {bankAccounts.length === 0 && (
-              <Text style={styles.emptyAccountsText}>No accounts yet — add one from the account menu.</Text>
+              <Text style={styles.emptyAccountsText}>{t("dashboard.noAccountsHint")}</Text>
             )}
             {bankAccounts.map((account) => (
               <Pressable
@@ -370,28 +381,26 @@ export function DashboardScreen() {
       >
         <Pressable style={styles.menuBackdrop} onPress={() => setDateMenuVisible(false)}>
           <Pressable style={styles.menu} onPress={(e) => e.stopPropagation()}>
-            <Text style={styles.menuTitle}>Date</Text>
-            {(Object.keys(DATE_PRESET_LABELS) as DatePreset[])
-              .filter((option) => option !== "custom")
-              .map((option) => (
-                <Pressable
-                  key={option}
-                  style={styles.menuOption}
-                  onPress={() => {
-                    setDatePreset(option);
-                    setDateMenuVisible(false);
-                  }}
-                >
-                  <Text style={[styles.menuOptionText, datePreset === option && styles.menuOptionTextActive]}>
-                    {DATE_PRESET_LABELS[option]}
-                  </Text>
-                  {datePreset === option && <Ionicons name="checkmark" size={16} color="#4f46e5" />}
-                </Pressable>
-              ))}
+            <Text style={styles.menuTitle}>{t("transactions.dateTitle")}</Text>
+            {DATE_PRESET_ORDER.filter((option) => option !== "custom").map((option) => (
+              <Pressable
+                key={option}
+                style={styles.menuOption}
+                onPress={() => {
+                  setDatePreset(option);
+                  setDateMenuVisible(false);
+                }}
+              >
+                <Text style={[styles.menuOptionText, datePreset === option && styles.menuOptionTextActive]}>
+                  {DATE_PRESET_LABELS[option]}
+                </Text>
+                {datePreset === option && <Ionicons name="checkmark" size={16} color="#4f46e5" />}
+              </Pressable>
+            ))}
 
             <Pressable style={styles.menuOption} onPress={() => setDatePreset("custom")}>
               <Text style={[styles.menuOptionText, datePreset === "custom" && styles.menuOptionTextActive]}>
-                Custom range
+                {t("transactions.customRange")}
               </Text>
               {datePreset === "custom" && <Ionicons name="checkmark" size={16} color="#4f46e5" />}
             </Pressable>
@@ -400,21 +409,21 @@ export function DashboardScreen() {
               <View style={styles.customDateRow}>
                 <TextInput
                   style={styles.customDateInput}
-                  placeholder="YYYY-MM-DD"
+                  placeholder={t("transactions.datePlaceholder")}
                   value={customStart}
                   onChangeText={setCustomStart}
                   autoCapitalize="none"
                 />
-                <Text style={styles.customDateSeparator}>to</Text>
+                <Text style={styles.customDateSeparator}>{t("common.to")}</Text>
                 <TextInput
                   style={styles.customDateInput}
-                  placeholder="YYYY-MM-DD"
+                  placeholder={t("transactions.datePlaceholder")}
                   value={customEnd}
                   onChangeText={setCustomEnd}
                   autoCapitalize="none"
                 />
                 <Pressable style={styles.customDateApply} onPress={() => setDateMenuVisible(false)}>
-                  <Text style={styles.customDateApplyText}>Apply</Text>
+                  <Text style={styles.customDateApplyText}>{t("common.apply")}</Text>
                 </Pressable>
               </View>
             )}

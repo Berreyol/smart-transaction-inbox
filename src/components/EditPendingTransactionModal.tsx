@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   InputAccessoryView,
   Keyboard,
@@ -27,6 +28,7 @@ interface Props {
 const AMOUNT_ACCESSORY_ID = "edit-pending-amount-accessory";
 
 export function EditPendingTransactionModal({ item, onSave, onClose }: Props) {
+  const { t } = useTranslation();
   const [amountText, setAmountText] = useState("");
   const [type, setType] = useState<TransactionType | null>(null);
   const [merchant, setMerchant] = useState("");
@@ -61,9 +63,9 @@ export function EditPendingTransactionModal({ item, onSave, onClose }: Props) {
         <Pressable style={styles.backdropTouchable} onPress={onClose}>
           <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
             <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-          <Text style={styles.title}>Edit transaction</Text>
+          <Text style={styles.title}>{t("editPendingTransaction.title")}</Text>
 
-          <Text style={styles.label}>Amount</Text>
+          <Text style={styles.label}>{t("editPendingTransaction.amountLabel")}</Text>
           <TextInput
             style={[styles.input, amountError && styles.inputError]}
             value={amountText}
@@ -75,25 +77,25 @@ export function EditPendingTransactionModal({ item, onSave, onClose }: Props) {
             keyboardType="decimal-pad"
             inputAccessoryViewID={Platform.OS === "ios" ? AMOUNT_ACCESSORY_ID : undefined}
           />
-          {amountError && <Text style={styles.errorText}>Enter a valid amount</Text>}
+          {amountError && <Text style={styles.errorText}>{t("editPendingTransaction.amountError")}</Text>}
           {Platform.OS === "ios" && (
             <InputAccessoryView nativeID={AMOUNT_ACCESSORY_ID}>
               <View style={styles.accessory}>
                 <Pressable onPress={() => Keyboard.dismiss()}>
-                  <Text style={styles.accessoryDone}>Done</Text>
+                  <Text style={styles.accessoryDone}>{t("common.done")}</Text>
                 </Pressable>
               </View>
             </InputAccessoryView>
           )}
 
-          <Text style={styles.label}>Type</Text>
+          <Text style={styles.label}>{t("editPendingTransaction.typeLabel")}</Text>
           <View style={styles.typeRow}>
             <Pressable
               style={[styles.typeButton, type === "expense" && styles.typeButtonSelectedExpense]}
               onPress={() => setType("expense")}
             >
               <Text style={[styles.typeButtonText, type === "expense" && styles.typeButtonTextSelected]}>
-                Expense
+                {t("common.expense")}
               </Text>
             </Pressable>
             <Pressable
@@ -101,24 +103,24 @@ export function EditPendingTransactionModal({ item, onSave, onClose }: Props) {
               onPress={() => setType("income")}
             >
               <Text style={[styles.typeButtonText, type === "income" && styles.typeButtonTextSelected]}>
-                Income
+                {t("common.income")}
               </Text>
             </Pressable>
           </View>
 
-          <Text style={styles.label}>Merchant</Text>
+          <Text style={styles.label}>{t("editPendingTransaction.merchantLabel")}</Text>
           <TextInput
             style={styles.input}
             value={merchant}
             onChangeText={setMerchant}
-            placeholder="Merchant name"
+            placeholder={t("editPendingTransaction.merchantPlaceholder")}
           />
 
           <Pressable style={styles.save} onPress={handleSave}>
-            <Text style={styles.saveText}>Save</Text>
+            <Text style={styles.saveText}>{t("common.save")}</Text>
           </Pressable>
           <Pressable style={styles.cancel} onPress={onClose}>
-            <Text style={styles.cancelText}>Cancel</Text>
+            <Text style={styles.cancelText}>{t("common.cancel")}</Text>
           </Pressable>
             </ScrollView>
           </Pressable>

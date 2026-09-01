@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { Transaction } from "../types/database";
 
@@ -11,7 +12,6 @@ interface Props {
 
 const LEVEL_COLORS = ["#f3f4f6", "#e0e7ff", "#a5b4fc", "#6366f1", "#4338ca"];
 const LEVEL_TEXT_COLORS = ["#9ca3af", "#4338ca", "#3730a3", "#fff", "#fff"];
-const WEEKDAY_HEADERS = ["S", "M", "T", "W", "T", "F", "S"];
 const MONTH_LABEL_FORMAT: Intl.DateTimeFormatOptions = { month: "long", year: "numeric" };
 
 function levelForCount(count: number): number {
@@ -23,6 +23,8 @@ function levelForCount(count: number): number {
 }
 
 export function MonthCalendarChart({ transactions, monthDate, onSelectDate }: Props) {
+  const { t, i18n } = useTranslation();
+  const weekdayHeaders = t("charts.weekdayInitials", { returnObjects: true }) as string[];
   const year = monthDate.getFullYear();
   const month = monthDate.getMonth();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -52,14 +54,12 @@ export function MonthCalendarChart({ transactions, monthDate, onSelectDate }: Pr
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
-        <Text style={styles.title}>{monthDate.toLocaleDateString(undefined, MONTH_LABEL_FORMAT)}</Text>
-        <Text style={styles.subtitle}>
-          {totalTransactions} transaction{totalTransactions === 1 ? "" : "s"}
-        </Text>
+        <Text style={styles.title}>{monthDate.toLocaleDateString(i18n.language, MONTH_LABEL_FORMAT)}</Text>
+        <Text style={styles.subtitle}>{t("charts.transactionCount", { count: totalTransactions })}</Text>
       </View>
 
       <View style={styles.weekRow}>
-        {WEEKDAY_HEADERS.map((label, i) => (
+        {weekdayHeaders.map((label, i) => (
           <View key={i} style={styles.cell}>
             <Text style={styles.weekHeaderLabel}>{label}</Text>
           </View>
@@ -94,11 +94,11 @@ export function MonthCalendarChart({ transactions, monthDate, onSelectDate }: Pr
       ))}
 
       <View style={styles.legendRow}>
-        <Text style={styles.legendLabel}>Less</Text>
+        <Text style={styles.legendLabel}>{t("charts.less")}</Text>
         {LEVEL_COLORS.map((color, i) => (
           <View key={i} style={[styles.legendSwatch, { backgroundColor: color }]} />
         ))}
-        <Text style={styles.legendLabel}>More</Text>
+        <Text style={styles.legendLabel}>{t("charts.more")}</Text>
       </View>
     </View>
   );

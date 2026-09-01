@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   InputAccessoryView,
   Keyboard,
@@ -34,6 +35,7 @@ interface Props {
 const AMOUNT_ACCESSORY_ID = "transaction-form-amount-accessory";
 
 export function TransactionFormModal({ visible, transaction, onSubmit, onClose }: Props) {
+  const { t } = useTranslation();
   const categories = useCategoriesStore((state) => state.items);
   const bankAccounts = useBankAccountsStore((state) => state.items);
 
@@ -67,11 +69,11 @@ export function TransactionFormModal({ visible, transaction, onSubmit, onClose }
   const handleSubmit = async () => {
     const parsedAmount = parseFloat(amount);
     if (!parsedAmount || parsedAmount <= 0) {
-      setError("Enter a valid amount greater than 0.");
+      setError(t("transactionForm.errorAmount"));
       return;
     }
     if (!category) {
-      setError("Choose a category.");
+      setError(t("transactionForm.errorCategory"));
       return;
     }
 
@@ -86,7 +88,7 @@ export function TransactionFormModal({ visible, transaction, onSubmit, onClose }
     setSubmitting(false);
 
     if (success) onClose();
-    else setError("Something went wrong — please try again.");
+    else setError(t("common.genericErrorMessage"));
   };
 
   return (
@@ -98,7 +100,9 @@ export function TransactionFormModal({ visible, transaction, onSubmit, onClose }
         <Pressable style={styles.backdropTouchable} onPress={onClose}>
           <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
             <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-          <Text style={styles.title}>{transaction ? "Edit transaction" : "New transaction"}</Text>
+          <Text style={styles.title}>
+            {transaction ? t("transactionForm.editTitle") : t("transactionForm.newTitle")}
+          </Text>
 
           <View style={styles.typeRow}>
             <Pressable
@@ -106,7 +110,7 @@ export function TransactionFormModal({ visible, transaction, onSubmit, onClose }
               onPress={() => handleTypeChange("expense")}
             >
               <Text style={[styles.typeText, type === "expense" && styles.typeTextActive]}>
-                Expense
+                {t("common.expense")}
               </Text>
             </Pressable>
             <Pressable
@@ -114,12 +118,12 @@ export function TransactionFormModal({ visible, transaction, onSubmit, onClose }
               onPress={() => handleTypeChange("income")}
             >
               <Text style={[styles.typeText, type === "income" && styles.typeTextActive]}>
-                Income
+                {t("common.income")}
               </Text>
             </Pressable>
           </View>
 
-          <Text style={styles.label}>Amount</Text>
+          <Text style={styles.label}>{t("transactionForm.amountLabel")}</Text>
           <TextInput
             style={styles.input}
             keyboardType="decimal-pad"
@@ -132,33 +136,33 @@ export function TransactionFormModal({ visible, transaction, onSubmit, onClose }
             <InputAccessoryView nativeID={AMOUNT_ACCESSORY_ID}>
               <View style={styles.accessory}>
                 <Pressable onPress={() => Keyboard.dismiss()}>
-                  <Text style={styles.accessoryDone}>Done</Text>
+                  <Text style={styles.accessoryDone}>{t("common.done")}</Text>
                 </Pressable>
               </View>
             </InputAccessoryView>
           )}
 
-          <Text style={styles.label}>Category</Text>
+          <Text style={styles.label}>{t("transactionForm.categoryLabel")}</Text>
           <Pressable style={styles.input} onPress={() => setCategoryPickerVisible(true)}>
             <Text style={category ? styles.inputText : styles.placeholderText}>
-              {category || "Choose a category"}
+              {category || t("common.chooseCategory")}
             </Text>
           </Pressable>
 
-          <Text style={styles.label}>Merchant (optional)</Text>
+          <Text style={styles.label}>{t("transactionForm.merchantLabel")}</Text>
           <TextInput
             style={styles.input}
-            placeholder="e.g. Trader Joe's"
+            placeholder={t("transactionForm.merchantPlaceholder")}
             value={merchant}
             onChangeText={setMerchant}
           />
 
           {bankAccounts.length > 0 && (
             <>
-              <Text style={styles.label}>Account (optional)</Text>
+              <Text style={styles.label}>{t("transactionForm.accountLabel")}</Text>
               <Pressable style={styles.input} onPress={() => setAccountPickerVisible(true)}>
                 <Text style={selectedAccount ? styles.inputText : styles.placeholderText}>
-                  {selectedAccount ? selectedAccount.account_alias : "No account"}
+                  {selectedAccount ? selectedAccount.account_alias : t("bankAccountPicker.noAccount")}
                 </Text>
               </Pressable>
             </>
@@ -172,11 +176,15 @@ export function TransactionFormModal({ visible, transaction, onSubmit, onClose }
             disabled={submitting}
           >
             <Text style={styles.submitText}>
-              {submitting ? "Saving…" : transaction ? "Save changes" : "Add transaction"}
+              {submitting
+                ? t("transactionForm.saving")
+                : transaction
+                  ? t("transactionForm.saveChanges")
+                  : t("transactionForm.addTransaction")}
             </Text>
           </Pressable>
           <Pressable style={styles.cancel} onPress={onClose}>
-            <Text style={styles.cancelText}>Cancel</Text>
+            <Text style={styles.cancelText}>{t("common.cancel")}</Text>
           </Pressable>
             </ScrollView>
           </Pressable>

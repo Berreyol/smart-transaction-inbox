@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import type { Transaction } from "../types/database";
 
@@ -17,7 +18,9 @@ const CELL_GAP = 3;
 // years of near-empty weeks.
 const MAX_DAYS = 371;
 const LEVEL_COLORS = ["#f3f4f6", "#e0e7ff", "#a5b4fc", "#6366f1", "#4338ca"];
-const WEEKDAY_LABELS = ["", "M", "", "W", "", "F", ""];
+// Only Mon/Wed/Fri get a visible initial — a full row of 7 letters is too
+// cramped next to the day-cell grid.
+const VISIBLE_WEEKDAY_INDICES = [1, 3, 5];
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 function startOfDay(date: Date) {
@@ -37,6 +40,9 @@ function levelForCount(count: number): number {
 }
 
 export function CalendarActivityChart({ transactions, rangeStart, rangeEnd, onSelectDate }: Props) {
+  const { t } = useTranslation();
+  const weekdayInitials = t("charts.weekdayInitials", { returnObjects: true }) as string[];
+  const weekdayLabels = weekdayInitials.map((label, i) => (VISIBLE_WEEKDAY_INDICES.includes(i) ? label : ""));
   const today = startOfDay(new Date());
   const end = rangeEnd ? (startOfDay(rangeEnd) > today ? today : startOfDay(rangeEnd)) : today;
 
@@ -82,14 +88,12 @@ export function CalendarActivityChart({ transactions, rangeStart, rangeEnd, onSe
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
-        <Text style={styles.title}>Activity</Text>
-        <Text style={styles.subtitle}>
-          {totalTransactions} transaction{totalTransactions === 1 ? "" : "s"}
-        </Text>
+        <Text style={styles.title}>{t("charts.activity")}</Text>
+        <Text style={styles.subtitle}>{t("charts.transactionCount", { count: totalTransactions })}</Text>
       </View>
       <View style={styles.gridRow}>
         <View style={styles.weekdayColumn}>
-          {WEEKDAY_LABELS.map((label, i) => (
+          {weekdayLabels.map((label, i) => (
             <Text key={i} style={styles.weekdayLabel}>
               {label}
             </Text>
@@ -118,11 +122,11 @@ export function CalendarActivityChart({ transactions, rangeStart, rangeEnd, onSe
         </ScrollView>
       </View>
       <View style={styles.legendRow}>
-        <Text style={styles.legendLabel}>Less</Text>
+        <Text style={styles.legendLabel}>{t("charts.less")}</Text>
         {LEVEL_COLORS.map((color, i) => (
           <View key={i} style={[styles.legendSwatch, { backgroundColor: color }]} />
         ))}
-        <Text style={styles.legendLabel}>More</Text>
+        <Text style={styles.legendLabel}>{t("charts.more")}</Text>
       </View>
     </View>
   );

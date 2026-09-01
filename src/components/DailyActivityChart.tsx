@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { BarChart } from "react-native-gifted-charts";
 import type { Transaction } from "../types/database";
@@ -45,6 +46,7 @@ function formatMonthDay(d: Date): string {
 }
 
 export function DailyActivityChart({ transactions, rangeStart, rangeEnd }: Props) {
+  const { t } = useTranslation();
   const today = startOfDay(new Date());
   const end = rangeEnd ? (startOfDay(rangeEnd) > today ? today : startOfDay(rangeEnd)) : today;
   const start = rangeStart ? startOfDay(rangeStart) : end;
@@ -66,8 +68,11 @@ export function DailyActivityChart({ transactions, rangeStart, rangeEnd }: Props
       frontColor: BAR_COLOR,
     }));
     const count = transactions.length;
-    const dayLabel = start.getTime() === today.getTime() ? "today" : `on ${formatISODate(start)}`;
-    subtitle = `${count} transaction${count === 1 ? "" : "s"} ${dayLabel}`;
+    const dayLabel =
+      start.getTime() === today.getTime()
+        ? t("charts.today")
+        : t("charts.onDate", { date: formatISODate(start) });
+    subtitle = `${t("charts.transactionCount", { count })} ${dayLabel}`;
   } else {
     const countByDay = new Map<string, number>();
     for (const t of transactions) {
@@ -90,7 +95,10 @@ export function DailyActivityChart({ transactions, rangeStart, rangeEnd }: Props
     }));
 
     const count = transactions.length;
-    subtitle = `${count} transaction${count === 1 ? "" : "s"} ${formatMonthDay(start)} to ${formatMonthDay(end)}`;
+    subtitle = `${t("charts.transactionCount", { count })} ${t("charts.dateRange", {
+      start: formatMonthDay(start),
+      end: formatMonthDay(end),
+    })}`;
   }
 
   const maxCount = Math.max(...data.map((d) => d.value), 1);
@@ -101,7 +109,7 @@ export function DailyActivityChart({ transactions, rangeStart, rangeEnd }: Props
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
-        <Text style={styles.title}>Activity</Text>
+        <Text style={styles.title}>{t("charts.activity")}</Text>
         <Text style={styles.subtitle}>{subtitle}</Text>
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>

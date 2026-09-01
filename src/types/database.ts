@@ -18,6 +18,7 @@ export type Profile = {
   email: string;
   expo_push_token: string | null;
   forwarding_token: string;
+  language: string | null;
   created_at: string;
 };
 
