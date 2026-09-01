@@ -18,9 +18,9 @@
     "cantBeUndone": "Esto no se puede deshacer."
   },
   "nav": {
-    "inbox": "Bandeja",
+    "inbox": "Inbox",
     "transactions": "Transacciones",
-    "dashboard": "Panel"
+    "dashboard": "Dashboard"
   },
   "accountMenu": {
     "forwardingAddress": "Dirección de reenvío",
