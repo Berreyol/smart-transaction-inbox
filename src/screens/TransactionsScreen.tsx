@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Alert, FlatList, Modal, Pressable, RefreshControl, StyleSheet, Text, TextInput, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import type { RouteProp } from "@react-navigation/native";
@@ -13,25 +14,32 @@ import { useCategoriesStore } from "../store/categoriesStore";
 import { useDateFilterStore } from "../store/dateFilterStore";
 import { useTransactionsStore, type TransactionInput } from "../store/transactionsStore";
 import type { Transaction, TransactionType } from "../types/database";
-import { DATE_PRESET_LABELS, DEFAULT_DATE_PRESET, resolveDateRange, type DatePreset } from "../utils/dateFilter";
+import { DATE_PRESET_ORDER, DEFAULT_DATE_PRESET, resolveDateRange, type DatePreset } from "../utils/dateFilter";
 
 type TypeFilter = "all" | TransactionType;
 type CategoryFilter = "all" | string;
 type SortOption = "recent" | "amount_desc" | "amount_asc";
 
-const TYPE_FILTER_LABELS: Record<TypeFilter, string> = {
-  all: "All",
-  expense: "Expense",
-  income: "Income",
-};
-
-const SORT_LABELS: Record<SortOption, string> = {
-  recent: "Most recent",
-  amount_desc: "Amount: high to low",
-  amount_asc: "Amount: low to high",
-};
-
 export function TransactionsScreen() {
+  const { t } = useTranslation();
+  const TYPE_FILTER_LABELS: Record<TypeFilter, string> = {
+    all: t("transactions.filterAll"),
+    expense: t("common.expense"),
+    income: t("common.income"),
+  };
+  const SORT_LABELS: Record<SortOption, string> = {
+    recent: t("transactions.sortRecent"),
+    amount_desc: t("transactions.sortAmountDesc"),
+    amount_asc: t("transactions.sortAmountAsc"),
+  };
+  const DATE_PRESET_LABELS: Record<DatePreset, string> = {
+    all: t("dateFilter.all"),
+    today: t("dateFilter.today"),
+    "7d": t("dateFilter.7d"),
+    "30d": t("dateFilter.30d"),
+    month: t("dateFilter.month"),
+    custom: t("dateFilter.custom"),
+  };
   const route = useRoute<RouteProp<RootTabParamList, "Transactions">>();
   const userId = useAuthStore((state) => state.session?.user.id);
   const {
@@ -134,9 +142,9 @@ export function TransactionsScreen() {
   };
 
   const handleDelete = (transaction: Transaction) => {
-    Alert.alert("Delete transaction?", "This can't be undone.", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Delete", style: "destructive", onPress: () => deleteTransaction(transaction.id) },
+    Alert.alert(t("transactions.deleteTitle"), t("common.cantBeUndone"), [
+      { text: t("common.cancel"), style: "cancel" },
+      { text: t("common.delete"), style: "destructive", onPress: () => deleteTransaction(transaction.id) },
     ]);
   };
 
@@ -222,8 +230,8 @@ export function TransactionsScreen() {
         }
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Text style={styles.emptyTitle}>No transactions</Text>
-            <Text style={styles.emptySubtitle}>Tap the + button to add one.</Text>
+            <Text style={styles.emptyTitle}>{t("transactions.emptyTitle")}</Text>
+            <Text style={styles.emptySubtitle}>{t("transactions.emptySubtitle")}</Text>
           </View>
         }
         renderItem={({ item }) => (
@@ -256,9 +264,8 @@ export function TransactionsScreen() {
       >
         <Pressable style={styles.menuBackdrop} onPress={() => setDateMenuVisible(false)}>
           <Pressable style={styles.menu} onPress={(e) => e.stopPropagation()}>
-            <Text style={styles.menuTitle}>Date</Text>
-            {(Object.keys(DATE_PRESET_LABELS) as DatePreset[])
-              .filter((option) => option !== "custom")
+            <Text style={styles.menuTitle}>{t("transactions.dateTitle")}</Text>
+            {DATE_PRESET_ORDER.filter((option) => option !== "custom")
               .map((option) => (
                 <Pressable
                   key={option}
@@ -277,7 +284,7 @@ export function TransactionsScreen() {
 
             <Pressable style={styles.menuOption} onPress={() => setDatePreset("custom")}>
               <Text style={[styles.menuOptionText, datePreset === "custom" && styles.menuOptionTextActive]}>
-                Custom range
+                {t("transactions.customRange")}
               </Text>
               {datePreset === "custom" && <Ionicons name="checkmark" size={16} color="#4f46e5" />}
             </Pressable>
@@ -286,21 +293,21 @@ export function TransactionsScreen() {
               <View style={styles.customDateRow}>
                 <TextInput
                   style={styles.customDateInput}
-                  placeholder="YYYY-MM-DD"
+                  placeholder={t("transactions.datePlaceholder")}
                   value={customStart}
                   onChangeText={setCustomStart}
                   autoCapitalize="none"
                 />
-                <Text style={styles.customDateSeparator}>to</Text>
+                <Text style={styles.customDateSeparator}>{t("common.to")}</Text>
                 <TextInput
                   style={styles.customDateInput}
-                  placeholder="YYYY-MM-DD"
+                  placeholder={t("transactions.datePlaceholder")}
                   value={customEnd}
                   onChangeText={setCustomEnd}
                   autoCapitalize="none"
                 />
                 <Pressable style={styles.customDateApply} onPress={() => setDateMenuVisible(false)}>
-                  <Text style={styles.customDateApplyText}>Apply</Text>
+                  <Text style={styles.customDateApplyText}>{t("common.apply")}</Text>
                 </Pressable>
               </View>
             )}
@@ -316,7 +323,7 @@ export function TransactionsScreen() {
       >
         <Pressable style={styles.menuBackdrop} onPress={() => setCategoryMenuVisible(false)}>
           <View style={styles.menu}>
-            <Text style={styles.menuTitle}>Category</Text>
+            <Text style={styles.menuTitle}>{t("transactions.categoryTitle")}</Text>
             <Pressable
               style={styles.menuOption}
               onPress={() => {
@@ -325,14 +332,14 @@ export function TransactionsScreen() {
               }}
             >
               <Text style={[styles.menuOptionText, categoryFilter === "all" && styles.menuOptionTextActive]}>
-                All categories
+                {t("common.allCategories")}
               </Text>
               {categoryFilter === "all" && <Ionicons name="checkmark" size={16} color="#4f46e5" />}
             </Pressable>
 
             {typeFilter !== "income" && expenseCategories.length > 0 && (
               <>
-                <Text style={styles.menuTitle}>Expense</Text>
+                <Text style={styles.menuTitle}>{t("common.expense")}</Text>
                 {expenseCategories.map((category) => (
                   <Pressable
                     key={category.id}
@@ -360,7 +367,7 @@ export function TransactionsScreen() {
 
             {typeFilter !== "expense" && incomeCategories.length > 0 && (
               <>
-                <Text style={styles.menuTitle}>Income</Text>
+                <Text style={styles.menuTitle}>{t("common.income")}</Text>
                 {incomeCategories.map((category) => (
                   <Pressable
                     key={category.id}
@@ -397,7 +404,7 @@ export function TransactionsScreen() {
       >
         <Pressable style={styles.menuBackdrop} onPress={() => setSortMenuVisible(false)}>
           <View style={styles.menu}>
-            <Text style={styles.menuTitle}>Sort by</Text>
+            <Text style={styles.menuTitle}>{t("transactions.sortTitle")}</Text>
             {(Object.keys(SORT_LABELS) as SortOption[]).map((option) => (
               <Pressable
                 key={option}

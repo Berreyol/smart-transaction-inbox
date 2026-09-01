@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Modal, Pressable, StyleSheet, Text } from "react-native";
 import { SUPPORTED_BANKS } from "../utils/banks";
 
@@ -8,18 +9,19 @@ interface Props {
 }
 
 export function BankPickerModal({ visible, onSelect, onClose }: Props) {
+  const { t } = useTranslation();
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose}>
         <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
-          <Text style={styles.title}>Choose a bank</Text>
+          <Text style={styles.title}>{t("bankPicker.title")}</Text>
           {SUPPORTED_BANKS.map((bank) => (
             <Pressable key={bank} style={styles.option} onPress={() => onSelect(bank)}>
               <Text style={styles.optionText}>{bank}</Text>
             </Pressable>
           ))}
           <Pressable style={styles.cancel} onPress={onClose}>
-            <Text style={styles.cancelText}>Cancel</Text>
+            <Text style={styles.cancelText}>{t("common.cancel")}</Text>
           </Pressable>
         </Pressable>
       </Pressable>

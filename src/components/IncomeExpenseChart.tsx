@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { StyleSheet, Text, View } from "react-native";
 import { BarChart } from "react-native-gifted-charts";
 import type { TransactionType } from "../types/database";
@@ -12,18 +13,19 @@ interface Props {
 }
 
 export function IncomeExpenseChart({ totalIncome, totalExpenses, onSelectType }: Props) {
+  const { t } = useTranslation();
   const maxValue = Math.max(totalIncome, totalExpenses, 1);
 
   const data = [
     {
       value: totalIncome,
-      label: "Income",
+      label: t("charts.income"),
       frontColor: INCOME_COLOR,
       onPress: () => onSelectType?.("income"),
     },
     {
       value: totalExpenses,
-      label: "Expenses",
+      label: t("charts.expenses"),
       frontColor: EXPENSE_COLOR,
       onPress: () => onSelectType?.("expense"),
     },
@@ -36,17 +38,17 @@ export function IncomeExpenseChart({ totalIncome, totalExpenses, onSelectType }:
           <Text style={[styles.statValue, { color: INCOME_COLOR }]}>
             ${totalIncome.toFixed(2)}
           </Text>
-          <Text style={styles.statLabel}>Income</Text>
+          <Text style={styles.statLabel}>{t("charts.income")}</Text>
         </View>
         <View style={styles.stat}>
           <Text style={[styles.statValue, { color: EXPENSE_COLOR }]}>
             ${totalExpenses.toFixed(2)}
           </Text>
-          <Text style={styles.statLabel}>Expenses</Text>
+          <Text style={styles.statLabel}>{t("charts.expenses")}</Text>
         </View>
         <View style={styles.stat}>
           <Text style={styles.statValue}>${(totalIncome - totalExpenses).toFixed(2)}</Text>
-          <Text style={styles.statLabel}>Net</Text>
+          <Text style={styles.statLabel}>{t("charts.net")}</Text>
         </View>
       </View>
 

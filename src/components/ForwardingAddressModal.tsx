@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { useProfileStore } from "../store/profileStore";
 import { buildForwardingAddress } from "../utils/forwardingAddress";
@@ -8,6 +9,7 @@ interface Props {
 }
 
 export function ForwardingAddressModal({ visible, onClose }: Props) {
+  const { t } = useTranslation();
   const profile = useProfileStore((state) => state.profile);
   const address = profile
     ? buildForwardingAddress(process.env.EXPO_PUBLIC_INBOUND_EMAIL_ADDRESS, profile.forwarding_token)
@@ -17,11 +19,8 @@ export function ForwardingAddressModal({ visible, onClose }: Props) {
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose}>
         <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
-          <Text style={styles.title}>Your forwarding address</Text>
-          <Text style={styles.body}>
-            Forward bank emails here — or set it as an auto-forward rule's target — and we'll
-            know they're yours even if the rule keeps the bank's original sender address.
-          </Text>
+          <Text style={styles.title}>{t("forwardingAddress.title")}</Text>
+          <Text style={styles.body}>{t("forwardingAddress.body")}</Text>
 
           {address ? (
             <Text selectable style={styles.address}>
@@ -33,16 +32,15 @@ export function ForwardingAddressModal({ visible, onClose }: Props) {
                 {profile.forwarding_token}
               </Text>
               <Text style={styles.hint}>
-                Append this as a "+tag" before the @ in your Pipedream inbound address, e.g.
-                base+{profile.forwarding_token}@pipedream.net.
+                {t("forwardingAddress.hint", { token: profile.forwarding_token })}
               </Text>
             </>
           ) : (
-            <Text style={styles.hint}>Loading…</Text>
+            <Text style={styles.hint}>{t("common.loading")}</Text>
           )}
 
           <Pressable style={styles.done} onPress={onClose}>
-            <Text style={styles.doneText}>Done</Text>
+            <Text style={styles.doneText}>{t("common.done")}</Text>
           </Pressable>
         </Pressable>
       </Pressable>

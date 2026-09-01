@@ -1,11 +1,8 @@
+import { useTranslation } from "react-i18next";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { BankAccount, PendingTransaction } from "../types/database";
 
 const SNIPPET_LENGTH = 140;
-
-function formatAmount(amount: number | null): string {
-  return amount === null ? "Amount not detected" : `$${amount.toFixed(2)}`;
-}
 
 interface Props {
   item: PendingTransaction;
@@ -16,6 +13,9 @@ interface Props {
 }
 
 export function PendingTransactionCard({ item, matchedAccount, onApprove, onReject, onEdit }: Props) {
+  const { t } = useTranslation();
+  const formatAmount = (amount: number | null): string =>
+    amount === null ? t("pendingTransaction.amountNotDetected") : `$${amount.toFixed(2)}`;
   const canApprove = item.amount !== null && item.type !== null;
   const displayText = item.subject?.trim() || item.raw_text;
   const snippet =
@@ -29,7 +29,7 @@ export function PendingTransactionCard({ item, matchedAccount, onApprove, onReje
         <Text style={styles.amount}>{formatAmount(item.amount)}</Text>
         {item.type && (
           <View style={[styles.badge, item.type === "income" ? styles.badgeIncome : styles.badgeExpense]}>
-            <Text style={styles.badgeText}>{item.type === "income" ? "Income" : "Expense"}</Text>
+            <Text style={styles.badgeText}>{item.type === "income" ? t("common.income") : t("common.expense")}</Text>
           </View>
         )}
       </View>
@@ -38,7 +38,7 @@ export function PendingTransactionCard({ item, matchedAccount, onApprove, onReje
       {matchedAccount && (
         <View style={styles.matchedAccount}>
           <Text style={styles.matchedAccountText}>
-            Matched account: {matchedAccount.account_alias}
+            {t("pendingTransaction.matchedAccount", { alias: matchedAccount.account_alias })}
           </Text>
         </View>
       )}
@@ -48,24 +48,22 @@ export function PendingTransactionCard({ item, matchedAccount, onApprove, onReje
       </Text>
 
       {!canApprove && (
-        <Text style={styles.warning}>
-          Couldn't detect the amount or type — tap Edit to fill it in.
-        </Text>
+        <Text style={styles.warning}>{t("pendingTransaction.warning")}</Text>
       )}
 
       <View style={styles.actions}>
         <Pressable style={[styles.button, styles.rejectButton]} onPress={onReject}>
-          <Text style={styles.rejectButtonText}>Reject</Text>
+          <Text style={styles.rejectButtonText}>{t("common.reject")}</Text>
         </Pressable>
         <Pressable style={[styles.button, styles.editButton]} onPress={onEdit}>
-          <Text style={styles.editButtonText}>Edit</Text>
+          <Text style={styles.editButtonText}>{t("common.edit")}</Text>
         </Pressable>
         <Pressable
           style={[styles.button, styles.approveButton, !canApprove && styles.buttonDisabled]}
           onPress={onApprove}
           disabled={!canApprove}
         >
-          <Text style={styles.approveButtonText}>Approve</Text>
+          <Text style={styles.approveButtonText}>{t("common.approve")}</Text>
         </Pressable>
       </View>
     </View>

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { BankPickerModal } from "./BankPickerModal";
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export function AccountsModal({ visible, onClose }: Props) {
+  const { t } = useTranslation();
   const userId = useAuthStore((state) => state.session?.user.id);
   const accounts = useBankAccountsStore((state) => state.items);
   const addBankAccount = useBankAccountsStore((state) => state.addBankAccount);
@@ -27,14 +29,14 @@ export function AccountsModal({ visible, onClose }: Props) {
       setBankName("");
       setAlias("");
     } else {
-      Alert.alert("Couldn't add account", "Something went wrong — please try again.");
+      Alert.alert(t("accounts.addFailedTitle"), t("common.genericErrorMessage"));
     }
   };
 
   const handleDelete = (id: string, label: string) => {
-    Alert.alert("Delete account?", `"${label}" won't affect transactions already tagged with it.`, [
-      { text: "Cancel", style: "cancel" },
-      { text: "Delete", style: "destructive", onPress: () => deleteBankAccount(id) },
+    Alert.alert(t("accounts.deleteTitle"), t("accounts.deleteMessage", { label }), [
+      { text: t("common.cancel"), style: "cancel" },
+      { text: t("common.delete"), style: "destructive", onPress: () => deleteBankAccount(id) },
     ]);
   };
 
@@ -42,16 +44,14 @@ export function AccountsModal({ visible, onClose }: Props) {
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
       <View style={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.title}>Bank Accounts</Text>
+          <Text style={styles.title}>{t("accounts.title")}</Text>
           <Pressable onPress={onClose} hitSlop={12}>
-            <Text style={styles.done}>Done</Text>
+            <Text style={styles.done}>{t("common.done")}</Text>
           </Pressable>
         </View>
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <View style={styles.section}>
-            {accounts.length === 0 && (
-              <Text style={styles.emptyText}>No accounts yet — add your first one below.</Text>
-            )}
+            {accounts.length === 0 && <Text style={styles.emptyText}>{t("accounts.emptyText")}</Text>}
             {accounts.map((account) => (
               <View key={account.id} style={styles.row}>
                 <View style={styles.rowLabel}>
@@ -70,12 +70,12 @@ export function AccountsModal({ visible, onClose }: Props) {
             <View style={styles.addRow}>
               <Pressable style={styles.bankInput} onPress={() => setBankPickerVisible(true)}>
                 <Text style={bankName ? styles.bankInputText : styles.bankPlaceholderText}>
-                  {bankName || "Choose a bank"}
+                  {bankName || t("accounts.chooseBank")}
                 </Text>
               </Pressable>
               <TextInput
                 style={styles.aliasInput}
-                placeholder="Alias, e.g. Main Debit"
+                placeholder={t("accounts.aliasPlaceholder")}
                 value={alias}
                 onChangeText={setAlias}
                 onSubmitEditing={handleAdd}

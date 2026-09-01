@@ -1,6 +1,30 @@
 {
+  "common": {
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "done": "Done",
+    "save": "Save",
+    "apply": "Apply",
+    "to": "to",
+    "edit": "Edit",
+    "approve": "Approve",
+    "reject": "Reject",
+    "expense": "Expense",
+    "income": "Income",
+    "allCategories": "All categories",
+    "chooseCategory": "Choose a category",
+    "genericErrorMessage": "Something went wrong — please try again.",
+    "loading": "Loading…",
+    "cantBeUndone": "This can't be undone."
+  },
   "accountMenu": {
-    "settings": "Settings"
+    "forwardingAddress": "Forwarding address",
+    "bankAccounts": "Bank accounts",
+    "settings": "Settings",
+    "aboutMe": "About me",
+    "connectLinkedIn": "Connect on LinkedIn",
+    "contributeGithub": "Contribute on GitHub",
+    "signOut": "Sign Out"
   },
   "settings": {
     "title": "Settings",
@@ -9,5 +33,132 @@
     "languageEnglish": "English",
     "languageSpanish": "Español",
     "languageSystem": "System default"
+  },
+  "auth": {
+    "title": "Berry Cash",
+    "subtitleSignIn": "Sign in to continue",
+    "subtitleSignUp": "Create an account",
+    "emailPlaceholder": "Email",
+    "passwordPlaceholder": "Password",
+    "signIn": "Sign In",
+    "signUp": "Sign Up",
+    "switchToSignUp": "Need an account? Sign up",
+    "switchToSignIn": "Already have an account? Sign in"
+  },
+  "forwardingAddress": {
+    "title": "Your forwarding address",
+    "body": "Forward bank emails here — or set it as an auto-forward rule's target — and we'll know they're yours even if the rule keeps the bank's original sender address.",
+    "hint": "Append this as a \"+tag\" before the @ in your Pipedream inbound address, e.g. base+{{token}}@pipedream.net."
+  },
+  "accounts": {
+    "title": "Bank Accounts",
+    "emptyText": "No accounts yet — add your first one below.",
+    "chooseBank": "Choose a bank",
+    "aliasPlaceholder": "Alias, e.g. Main Debit",
+    "deleteTitle": "Delete account?",
+    "deleteMessage": "\"{{label}}\" won't affect transactions already tagged with it.",
+    "addFailedTitle": "Couldn't add account"
+  },
+  "bankAccountPicker": {
+    "title": "Assign to an account",
+    "subtitle": "Optional — you can skip this and add it later.",
+    "noAccount": "No account"
+  },
+  "bankPicker": {
+    "title": "Choose a bank"
+  },
+  "categories": {
+    "title": "Categories",
+    "newCategoryPlaceholder": "New {{type}} category",
+    "deleteTitle": "Delete category?",
+    "deleteMessage": "\"{{name}}\" won't affect transactions that already use it.",
+    "addFailedTitle": "Couldn't add category",
+    "addFailedMessage": "It might already exist."
+  },
+  "categoryPicker": {
+    "suggestedLabel": "Suggested (used last time for this merchant)",
+    "empty": "No categories yet — add one from Transactions."
+  },
+  "pendingTransaction": {
+    "amountNotDetected": "Amount not detected",
+    "matchedAccount": "Matched account: {{alias}}",
+    "warning": "Couldn't detect the amount or type — tap Edit to fill it in."
+  },
+  "editPendingTransaction": {
+    "title": "Edit transaction",
+    "amountLabel": "Amount",
+    "amountError": "Enter a valid amount",
+    "typeLabel": "Type",
+    "merchantLabel": "Merchant",
+    "merchantPlaceholder": "Merchant name"
+  },
+  "transactionForm": {
+    "newTitle": "New transaction",
+    "editTitle": "Edit transaction",
+    "amountLabel": "Amount",
+    "categoryLabel": "Category",
+    "merchantLabel": "Merchant (optional)",
+    "merchantPlaceholder": "e.g. Trader Joe's",
+    "accountLabel": "Account (optional)",
+    "errorAmount": "Enter a valid amount greater than 0.",
+    "errorCategory": "Choose a category.",
+    "saving": "Saving…",
+    "saveChanges": "Save changes",
+    "addTransaction": "Add transaction"
+  },
+  "inbox": {
+    "emptyTitle": "Inbox zero 🎉",
+    "emptySubtitle": "Forward a bank email to your inbox address and it'll show up here for review.",
+    "rejectTitle": "Reject transaction?",
+    "approveFailedTitle": "Couldn't approve",
+    "editFailedTitle": "Couldn't save changes"
+  },
+  "transactions": {
+    "filterAll": "All",
+    "sortRecent": "Most recent",
+    "sortAmountDesc": "Amount: high to low",
+    "sortAmountAsc": "Amount: low to high",
+    "dateTitle": "Date",
+    "customRange": "Custom range",
+    "sortTitle": "Sort by",
+    "categoryTitle": "Category",
+    "deleteTitle": "Delete transaction?",
+    "emptyTitle": "No transactions",
+    "emptySubtitle": "Tap the + button to add one.",
+    "datePlaceholder": "YYYY-MM-DD"
+  },
+  "dashboard": {
+    "viewIncomeExpense": "Income vs Expense",
+    "viewByCategory": "By category",
+    "accountTitle": "Account",
+    "allAccounts": "All accounts",
+    "accountFallback": "Account",
+    "noAccountsHint": "No accounts yet — add one from the account menu.",
+    "emptyTitle": "No transactions yet",
+    "emptySubtitle": "Approved transactions from your Inbox will show up here.",
+    "expensesByCategory": "Expenses by category",
+    "incomeByCategory": "Income by category"
+  },
+  "dateFilter": {
+    "all": "All time",
+    "today": "Today",
+    "7d": "Last 7 days",
+    "30d": "Last 30 days",
+    "month": "This month",
+    "custom": "Custom range"
+  },
+  "charts": {
+    "income": "Income",
+    "expenses": "Expenses",
+    "net": "Net",
+    "activity": "Activity",
+    "transactionCount_one": "{{count}} transaction",
+    "transactionCount_other": "{{count}} transactions",
+    "today": "today",
+    "onDate": "on {{date}}",
+    "dateRange": "{{start}} to {{end}}",
+    "less": "Less",
+    "more": "More",
+    "weekdayInitials": ["S", "M", "T", "W", "T", "F", "S"]
   }
 }

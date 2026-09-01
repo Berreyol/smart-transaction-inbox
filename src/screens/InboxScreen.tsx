@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Alert, FlatList, RefreshControl, StyleSheet, Text, View } from "react-native";
 import { BankAccountPickerModal } from "../components/BankAccountPickerModal";
 import { CategoryModal } from "../components/CategoryModal";
@@ -12,6 +13,7 @@ import type { PendingTransaction, PendingTransactionEdits } from "../types/datab
 import { normalizeMerchantKey } from "../utils/merchant";
 
 export function InboxScreen() {
+  const { t } = useTranslation();
   const userId = useAuthStore((state) => state.session?.user.id);
   const { items, suggestions, isLoading, fetchPending, fetchSuggestions, approve, reject, update, subscribe } =
     useInboxStore();
@@ -55,9 +57,9 @@ export function InboxScreen() {
     : null;
 
   const handleReject = (item: PendingTransaction) => {
-    Alert.alert("Reject transaction?", "This can't be undone.", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Reject", style: "destructive", onPress: () => reject(item.id) },
+    Alert.alert(t("inbox.rejectTitle"), t("common.cantBeUndone"), [
+      { text: t("common.cancel"), style: "cancel" },
+      { text: t("common.reject"), style: "destructive", onPress: () => reject(item.id) },
     ]);
   };
 
@@ -88,7 +90,7 @@ export function InboxScreen() {
     setPendingCategory(null);
     const success = await approve(pendingId, category, accountId);
     if (!success) {
-      Alert.alert("Couldn't approve", "Something went wrong — please try again.");
+      Alert.alert(t("inbox.approveFailedTitle"), t("common.genericErrorMessage"));
     }
   };
 
@@ -98,7 +100,7 @@ export function InboxScreen() {
     setEditingItem(null);
     const success = await update(pendingId, edits);
     if (!success) {
-      Alert.alert("Couldn't save changes", "Something went wrong — please try again.");
+      Alert.alert(t("inbox.editFailedTitle"), t("common.genericErrorMessage"));
     }
   };
 
@@ -113,10 +115,8 @@ export function InboxScreen() {
         }
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Text style={styles.emptyTitle}>Inbox zero 🎉</Text>
-            <Text style={styles.emptySubtitle}>
-              Forward a bank email to your inbox address and it'll show up here for review.
-            </Text>
+            <Text style={styles.emptyTitle}>{t("inbox.emptyTitle")}</Text>
+            <Text style={styles.emptySubtitle}>{t("inbox.emptySubtitle")}</Text>
           </View>
         }
         renderItem={({ item }) => (

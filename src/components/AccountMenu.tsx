@@ -77,12 +77,12 @@ export function AccountMenu() {
           <View style={styles.menu}>
             <Pressable style={styles.row} onPress={openForwardingAddress}>
               <Ionicons name="at-outline" size={20} color="#4f46e5" />
-              <Text style={styles.rowText}>Forwarding address</Text>
+              <Text style={styles.rowText}>{t("accountMenu.forwardingAddress")}</Text>
             </Pressable>
 
             <Pressable style={styles.row} onPress={openAccounts}>
               <Ionicons name="card-outline" size={20} color="#4f46e5" />
-              <Text style={styles.rowText}>Bank accounts</Text>
+              <Text style={styles.rowText}>{t("accountMenu.bankAccounts")}</Text>
             </Pressable>
 
             <Pressable style={styles.row} onPress={openSettings}>
@@ -92,22 +92,22 @@ export function AccountMenu() {
 
             <View style={styles.divider} />
 
-            <Text style={styles.sectionLabel}>About me</Text>
+            <Text style={styles.sectionLabel}>{t("accountMenu.aboutMe")}</Text>
             <Pressable style={styles.row} onPress={openLinkedIn}>
               <Ionicons name="logo-linkedin" size={20} color="#4f46e5" />
-              <Text style={styles.rowText}>Connect on LinkedIn</Text>
+              <Text style={styles.rowText}>{t("accountMenu.connectLinkedIn")}</Text>
             </Pressable>
 
             <Pressable style={styles.row} onPress={openGitHub}>
               <Ionicons name="logo-github" size={20} color="#4f46e5" />
-              <Text style={styles.rowText}>Contribute on GitHub</Text>
+              <Text style={styles.rowText}>{t("accountMenu.contributeGithub")}</Text>
             </Pressable>
 
             <View style={styles.divider} />
 
             <Pressable style={styles.row} onPress={handleSignOut}>
               <Ionicons name="log-out-outline" size={20} color="#dc2626" />
-              <Text style={[styles.rowText, styles.signOutText]}>Sign Out</Text>
+              <Text style={[styles.rowText, styles.signOutText]}>{t("accountMenu.signOut")}</Text>
             </Pressable>
           </View>
         </Pressable>

@@ -1,6 +1,30 @@
 {
+  "common": {
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "done": "Listo",
+    "save": "Guardar",
+    "apply": "Aplicar",
+    "to": "a",
+    "edit": "Editar",
+    "approve": "Aprobar",
+    "reject": "Rechazar",
+    "expense": "Gasto",
+    "income": "Ingreso",
+    "allCategories": "Todas las categorías",
+    "chooseCategory": "Elige una categoría",
+    "genericErrorMessage": "Algo salió mal — inténtalo de nuevo.",
+    "loading": "Cargando…",
+    "cantBeUndone": "Esto no se puede deshacer."
+  },
   "accountMenu": {
-    "settings": "Configuración"
+    "forwardingAddress": "Dirección de reenvío",
+    "bankAccounts": "Cuentas bancarias",
+    "settings": "Configuración",
+    "aboutMe": "Sobre mí",
+    "connectLinkedIn": "Conéctate en LinkedIn",
+    "contributeGithub": "Contribuye en GitHub",
+    "signOut": "Cerrar sesión"
   },
   "settings": {
     "title": "Configuración",
@@ -9,5 +33,132 @@
     "languageEnglish": "English",
     "languageSpanish": "Español",
     "languageSystem": "Predeterminado del sistema"
+  },
+  "auth": {
+    "title": "Berry Cash",
+    "subtitleSignIn": "Inicia sesión para continuar",
+    "subtitleSignUp": "Crea una cuenta",
+    "emailPlaceholder": "Correo electrónico",
+    "passwordPlaceholder": "Contraseña",
+    "signIn": "Iniciar sesión",
+    "signUp": "Registrarse",
+    "switchToSignUp": "¿No tienes cuenta? Regístrate",
+    "switchToSignIn": "¿Ya tienes cuenta? Inicia sesión"
+  },
+  "forwardingAddress": {
+    "title": "Tu dirección de reenvío",
+    "body": "Reenvía aquí los correos de tu banco — o configúrala como destino de una regla de reenvío automático — y sabremos que son tuyos aunque la regla conserve el remitente original del banco.",
+    "hint": "Agrega esto como un \"+tag\" antes de la @ en tu dirección de entrada de Pipedream, por ejemplo base+{{token}}@pipedream.net."
+  },
+  "accounts": {
+    "title": "Cuentas bancarias",
+    "emptyText": "Aún no tienes cuentas — agrega la primera abajo.",
+    "chooseBank": "Elige un banco",
+    "aliasPlaceholder": "Alias, ej. Débito principal",
+    "deleteTitle": "¿Eliminar cuenta?",
+    "deleteMessage": "\"{{label}}\" no afectará las transacciones ya etiquetadas con ella.",
+    "addFailedTitle": "No se pudo agregar la cuenta"
+  },
+  "bankAccountPicker": {
+    "title": "Asignar a una cuenta",
+    "subtitle": "Opcional — puedes omitir esto y agregarlo después.",
+    "noAccount": "Sin cuenta"
+  },
+  "bankPicker": {
+    "title": "Elige un banco"
+  },
+  "categories": {
+    "title": "Categorías",
+    "newCategoryPlaceholder": "Nueva categoría de {{type}}",
+    "deleteTitle": "¿Eliminar categoría?",
+    "deleteMessage": "\"{{name}}\" no afectará las transacciones que ya la usan.",
+    "addFailedTitle": "No se pudo agregar la categoría",
+    "addFailedMessage": "Puede que ya exista."
+  },
+  "categoryPicker": {
+    "suggestedLabel": "Sugerida (usada la última vez para este comercio)",
+    "empty": "Aún no hay categorías — agrega una desde Transacciones."
+  },
+  "pendingTransaction": {
+    "amountNotDetected": "Monto no detectado",
+    "matchedAccount": "Cuenta detectada: {{alias}}",
+    "warning": "No se pudo detectar el monto o el tipo — toca Editar para completarlo."
+  },
+  "editPendingTransaction": {
+    "title": "Editar transacción",
+    "amountLabel": "Monto",
+    "amountError": "Ingresa un monto válido",
+    "typeLabel": "Tipo",
+    "merchantLabel": "Comercio",
+    "merchantPlaceholder": "Nombre del comercio"
+  },
+  "transactionForm": {
+    "newTitle": "Nueva transacción",
+    "editTitle": "Editar transacción",
+    "amountLabel": "Monto",
+    "categoryLabel": "Categoría",
+    "merchantLabel": "Comercio (opcional)",
+    "merchantPlaceholder": "ej. Trader Joe's",
+    "accountLabel": "Cuenta (opcional)",
+    "errorAmount": "Ingresa un monto válido mayor que 0.",
+    "errorCategory": "Elige una categoría.",
+    "saving": "Guardando…",
+    "saveChanges": "Guardar cambios",
+    "addTransaction": "Agregar transacción"
+  },
+  "inbox": {
+    "emptyTitle": "Bandeja vacía 🎉",
+    "emptySubtitle": "Reenvía un correo de tu banco a tu dirección de entrada y aparecerá aquí para revisión.",
+    "rejectTitle": "¿Rechazar transacción?",
+    "approveFailedTitle": "No se pudo aprobar",
+    "editFailedTitle": "No se pudieron guardar los cambios"
+  },
+  "transactions": {
+    "filterAll": "Todas",
+    "sortRecent": "Más recientes",
+    "sortAmountDesc": "Monto: mayor a menor",
+    "sortAmountAsc": "Monto: menor a mayor",
+    "dateTitle": "Fecha",
+    "customRange": "Rango personalizado",
+    "sortTitle": "Ordenar por",
+    "categoryTitle": "Categoría",
+    "deleteTitle": "¿Eliminar transacción?",
+    "emptyTitle": "Sin transacciones",
+    "emptySubtitle": "Toca el botón + para agregar una.",
+    "datePlaceholder": "AAAA-MM-DD"
+  },
+  "dashboard": {
+    "viewIncomeExpense": "Ingresos vs Gastos",
+    "viewByCategory": "Por categoría",
+    "accountTitle": "Cuenta",
+    "allAccounts": "Todas las cuentas",
+    "accountFallback": "Cuenta",
+    "noAccountsHint": "Aún no tienes cuentas — agrega una desde el menú de cuenta.",
+    "emptyTitle": "Aún no hay transacciones",
+    "emptySubtitle": "Las transacciones aprobadas de tu Bandeja aparecerán aquí.",
+    "expensesByCategory": "Gastos por categoría",
+    "incomeByCategory": "Ingresos por categoría"
+  },
+  "dateFilter": {
+    "all": "Todo el tiempo",
+    "today": "Hoy",
+    "7d": "Últimos 7 días",
+    "30d": "Últimos 30 días",
+    "month": "Este mes",
+    "custom": "Rango personalizado"
+  },
+  "charts": {
+    "income": "Ingresos",
+    "expenses": "Gastos",
+    "net": "Neto",
+    "activity": "Actividad",
+    "transactionCount_one": "{{count}} transacción",
+    "transactionCount_other": "{{count}} transacciones",
+    "today": "hoy",
+    "onDate": "el {{date}}",
+    "dateRange": "{{start}} a {{end}}",
+    "less": "Menos",
+    "more": "Más",
+    "weekdayInitials": ["D", "L", "M", "M", "J", "V", "S"]
   }
 }
