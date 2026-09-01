@@ -16,7 +16,8 @@ interface AuthState {
   /** Loads the current session and subscribes to future auth changes. Call once, at app startup. */
   initialize: () => void;
   signInWithEmail: (email: string, password: string) => Promise<boolean>;
-  signUpWithEmail: (email: string, password: string) => Promise<boolean>;
+  /** `language` (if picked on the sign-up screen) rides along as user metadata — see migration 0012. */
+  signUpWithEmail: (email: string, password: string, language?: string | null) => Promise<boolean>;
   signOut: () => Promise<void>;
 }
 
@@ -43,9 +44,13 @@ export const useAuthStore = create<AuthState>((set) => ({
     return !error;
   },
 
-  signUpWithEmail: async (email, password) => {
+  signUpWithEmail: async (email, password, language) => {
     set({ isSubmitting: true, error: null });
-    const { error } = await supabase.auth.signUp({ email, password });
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: language ? { data: { language } } : undefined,
+    });
     set({ isSubmitting: false, error: error?.message ?? null });
     return !error;
   },
