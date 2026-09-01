@@ -18,21 +18,30 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { applyLanguagePreference, SUPPORTED_LANGUAGES, type SupportedLanguage } from "../i18n";
 import { useAuthStore } from "../store/authStore";
 
 export function AuthScreen() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [mode, setMode] = useState<"signIn" | "signUp">("signIn");
+  // null until the new user explicitly picks one, meaning "keep following
+  // the device locale" — same convention as Settings' "System default".
+  const [signUpLanguage, setSignUpLanguage] = useState<SupportedLanguage | null>(null);
   const { signInWithEmail, signUpWithEmail, isSubmitting, error } = useAuthStore();
 
   const handleSubmit = () => {
     if (mode === "signIn") {
       signInWithEmail(email.trim(), password);
     } else {
-      signUpWithEmail(email.trim(), password);
+      signUpWithEmail(email.trim(), password, signUpLanguage);
     }
+  };
+
+  const handlePickSignUpLanguage = (language: SupportedLanguage) => {
+    setSignUpLanguage(language);
+    applyLanguagePreference(language);
   };
 
   return (
@@ -62,6 +71,25 @@ export function AuthScreen() {
         value={password}
         onChangeText={setPassword}
       />
+
+      {mode === "signUp" && (
+        <View style={styles.languageRow}>
+          {SUPPORTED_LANGUAGES.map((language) => {
+            const isSelected = (signUpLanguage ?? i18n.language) === language;
+            return (
+              <Pressable
+                key={language}
+                style={[styles.languageChip, isSelected && styles.languageChipActive]}
+                onPress={() => handlePickSignUpLanguage(language)}
+              >
+                <Text style={[styles.languageChipText, isSelected && styles.languageChipTextActive]}>
+                  {language === "en" ? t("settings.languageEnglish") : t("settings.languageSpanish")}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      )}
 
       {error && <Text style={styles.error}>{error}</Text>}
 
@@ -113,6 +141,31 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 16,
     marginBottom: 12,
+  },
+  languageRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 12,
+  },
+  languageChip: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: "#d1d5db",
+    borderRadius: 8,
+    paddingVertical: 10,
+    alignItems: "center",
+  },
+  languageChipActive: {
+    backgroundColor: "#eef2ff",
+    borderColor: "#4f46e5",
+  },
+  languageChipText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#6b7280",
+  },
+  languageChipTextActive: {
+    color: "#4f46e5",
   },
   error: {
     color: "#dc2626",
