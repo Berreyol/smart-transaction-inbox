@@ -262,12 +262,36 @@ Deno.serve(async (req: Request) => {
   }
   const matchedAccount = bankAccounts ? matchBankAccount(searchText, bankAccounts) : null;
 
+  // 2c. Substitute a previously user-renamed merchant name, if this exact
+  // raw merchant string has been renamed before (e.g. "AMZN MKTP US*2K3AB"
+  // -> "Amazon" — see merchant_alias_map, populated by
+  // approve_pending_transaction when a user's edit differs from the raw
+  // parsed merchant). raw_merchant is stored alongside regardless, so a
+  // later rename of *this* row still has the original string to key off of.
+  let displayMerchant = parsed.merchant;
+  if (parsed.merchant) {
+    const rawMerchantKey = parsed.merchant.trim().toLowerCase();
+    const { data: alias, error: aliasError } = await supabase
+      .from("merchant_alias_map")
+      .select("display_merchant")
+      .eq("user_id", profile.id)
+      .eq("raw_merchant_key", rawMerchantKey)
+      .maybeSingle();
+
+    if (aliasError) {
+      console.error("Error looking up merchant alias:", aliasError);
+    } else if (alias) {
+      displayMerchant = alias.display_merchant;
+    }
+  }
+
   // 3. Store as a pending transaction awaiting user approval.
   const { error: insertError } = await supabase.from("pending_transactions").insert({
     user_id: profile.id,
     amount: parsed.amount,
     type: parsed.type,
-    merchant: parsed.merchant,
+    merchant: displayMerchant,
+    raw_merchant: parsed.merchant,
     subject: subject.trim() || null,
     bank_name: matchedAccount?.bank_name ?? "Generic",
     account_id: matchedAccount?.id ?? null,
@@ -284,7 +308,7 @@ Deno.serve(async (req: Request) => {
   // 4. Notify the user's device, if we have a push token on file.
   if (profile.expo_push_token) {
     const amountLabel = parsed.amount != null ? `$${parsed.amount.toFixed(2)}` : "";
-    const detail = parsed.merchant ?? matchedAccount?.account_alias ?? null;
+    const detail = displayMerchant ?? matchedAccount?.account_alias ?? null;
     const body = detail ? `${detail} ${amountLabel}`.trim() : amountLabel;
     await sendExpoPushNotification(profile.expo_push_token, body);
   }
