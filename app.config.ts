@@ -34,9 +34,6 @@ const config: ExpoConfig = {
       ? "com.berreyol.smarttransactioninbox.dev"
       : "com.berreyol.smarttransactioninbox",
   },
-  web: {
-    favicon: "./assets/favicon.png",
-  },
   plugins: ["expo-notifications", "expo-font", "expo-localization"],
   extra: {
     eas: {
