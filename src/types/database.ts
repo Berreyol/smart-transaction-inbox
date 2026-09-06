@@ -40,6 +40,8 @@ export type PendingTransaction = {
   amount: number | null;
   type: TransactionType | null;
   merchant: string | null;
+  /** The merchant string as originally extracted by the parser, before any alias substitution or user edit — see MerchantAliasMap. */
+  raw_merchant: string | null;
   subject: string | null;
   bank_name: string | null;
   account_id: string | null;
@@ -78,6 +80,15 @@ export type MerchantCategoryMap = {
   user_id: string;
   merchant_key: string;
   category: string;
+  updated_at: string;
+};
+
+/** raw_merchant_key is the normalized (trimmed, lowercased) *originally parsed* merchant string. */
+export type MerchantAliasMap = {
+  id: string;
+  user_id: string;
+  raw_merchant_key: string;
+  display_merchant: string;
   updated_at: string;
 };
 
@@ -128,6 +139,13 @@ export type Database = {
         Insert: Partial<MerchantCategoryMap> &
           Pick<MerchantCategoryMap, "user_id" | "merchant_key" | "category">;
         Update: Partial<MerchantCategoryMap>;
+        Relationships: [];
+      };
+      merchant_alias_map: {
+        Row: MerchantAliasMap;
+        Insert: Partial<MerchantAliasMap> &
+          Pick<MerchantAliasMap, "user_id" | "raw_merchant_key" | "display_merchant">;
+        Update: Partial<MerchantAliasMap>;
         Relationships: [];
       };
     };
