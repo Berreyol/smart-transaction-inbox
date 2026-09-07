@@ -1,11 +1,11 @@
 // ============================================================================
-// parser.test.ts
-// Unit tests for parser.ts, with particular emphasis on the URL allowlist
-// (isGenuineGoogleForwardingConfirmationUrl) — that's the control this whole
-// feature's safety depends on, so it's tested against realistic attack
-// payloads (domain-confusion tricks, SSRF targets, phishing redirects), not
-// just the happy path. Run with:
-//   deno test supabase/functions/handle-forwarding-confirmation/parser.test.ts
+// forwardingConfirmationParser.test.ts
+// Unit tests for forwardingConfirmationParser.ts, with particular emphasis
+// on the URL allowlist (isGenuineGoogleForwardingConfirmationUrl) — that's
+// the control this whole feature's safety depends on, so it's tested
+// against realistic attack payloads (domain-confusion tricks, SSRF targets,
+// phishing redirects), not just the happy path. Run with:
+//   deno test supabase/functions/_shared/forwardingConfirmationParser.test.ts
 // ============================================================================
 
 import { assertEquals } from "jsr:@std/assert@1";
@@ -13,7 +13,7 @@ import {
   extractForwardingToken,
   isGenuineGoogleForwardingConfirmationUrl,
   parseForwardingConfirmationEmail,
-} from "./parser.ts";
+} from "./forwardingConfirmationParser.ts";
 
 const REAL_CONFIRMATION_URL =
   "https://mail.google.com/mail/vf-%5BANGjdJ-6KGoFdmUFZP_ExjejgTbQr0mJO8qZLzqiyi7X5oDhZTYJYQb3WYo5PxLi6z5ON9ZAPXZQSqVwz8R8H7P5G6n09TFQhBZbkYbphwBKVG6xL_hc9xpoq-wT1RQ%5D-3tEenYjQdVmINN-83QpaonYYZlk";

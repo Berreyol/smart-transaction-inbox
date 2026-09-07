@@ -8,7 +8,7 @@ interface Props {
 }
 
 /**
- * Shown when the handle-forwarding-confirmation edge function couldn't
+ * Shown when parse-email's forwarding-confirmation branch couldn't
  * auto-confirm a Gmail forwarding setup request server-side (see that
  * function's comments for why the URL here is safe to open — it's already
  * been verified as genuinely hosted on mail.google.com).

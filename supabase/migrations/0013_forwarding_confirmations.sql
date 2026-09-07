@@ -1,9 +1,9 @@
 -- ============================================================================
 -- forwarding_confirmations: tracks the Gmail "confirm auto-forwarding"
--- request that Google emails to a user's personalized Pipedream inbound
--- address the first time they set up mail forwarding to it. Populated by
--- the handle-forwarding-confirmation edge function, which also attempts to
--- auto-confirm the request server-side by fetching the confirmation URL —
+-- request that Google emails to a user's personalized inbound address the
+-- first time they set up mail forwarding to it. Populated by parse-email's
+-- forwarding-confirmation branch, which also attempts to auto-confirm the
+-- request server-side by fetching the confirmation URL —
 -- rows land here either already resolved (status = 'auto_confirmed') or
 -- still needing the user to tap through it themselves (status = 'pending').
 --

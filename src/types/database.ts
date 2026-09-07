@@ -94,7 +94,7 @@ export type MerchantAliasMap = {
 
 export type ForwardingConfirmationStatus = "pending" | "auto_confirmed" | "manually_confirmed" | "dismissed";
 
-/** Populated by the handle-forwarding-confirmation edge function — see supabase/migrations/0013. */
+/** Populated by parse-email's forwarding-confirmation branch — see supabase/migrations/0013. */
 export type ForwardingConfirmation = {
   id: string;
   user_id: string;
