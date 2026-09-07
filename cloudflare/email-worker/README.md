@@ -61,6 +61,14 @@ equivalent to Pipedream's single inbound address: any address at the domain
 which is what lets each user's personalized `+forwarding_token` keep working
 exactly as it did with Pipedream.
 
+**Also enable subaddressing** (Email Routing → Settings → Subaddressing, or
+wherever the current dashboard surfaces it) — without it, Cloudflare doesn't
+treat `local-part+token@yourdomain.com` as reaching the same rule as
+`local-part@yourdomain.com`, so the `+token` routing this whole design
+depends on silently doesn't work even with the catch-all rule in place. This
+tripped up the very first real end-to-end test of this setup — the routing
+rule alone wasn't enough.
+
 ### 7. Point the app at the new address
 
 Update `.env`'s `EXPO_PUBLIC_INBOUND_EMAIL_ADDRESS` to whatever address you
@@ -79,10 +87,21 @@ triggers the `email()` handler — POST a raw MIME email to it to test the
 worker without needing a real inbound message:
 
 ```bash
-curl -X POST http://localhost:8787/cdn-cgi/handler/email \
+curl -X POST "http://localhost:8787/cdn-cgi/handler/email?from=sender@example.com&to=inbox+<token>@yourdomain.com" \
   --data-binary @path/to/sample-email.eml \
   -H "Content-Type: message/rfc822"
 ```
+
+`from`/`to` query params and a `Message-ID` header in the `.eml` are both
+required or Miniflare rejects the request before it reaches the worker.
+
+If this harness errors internally (an "Invalid URL string" TypeError from
+inside Miniflare's own code, before any of the worker's own `console.log`s
+appear) rather than actually running the `email()` handler, that's a
+Miniflare/environment issue, not this worker — fall back to
+[`scripts/send-test-email.mjs`](scripts/send-test-email.mjs), which
+replicates the same parse/reshape logic and posts to a real Supabase
+project instead of relying on Miniflare's email simulation.
 
 ## Typecheck
 
