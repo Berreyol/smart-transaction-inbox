@@ -92,6 +92,19 @@ export type MerchantAliasMap = {
   updated_at: string;
 };
 
+export type ForwardingConfirmationStatus = "pending" | "auto_confirmed" | "manually_confirmed" | "dismissed";
+
+/** Populated by the handle-forwarding-confirmation edge function — see supabase/migrations/0013. */
+export type ForwardingConfirmation = {
+  id: string;
+  user_id: string;
+  source_email: string | null;
+  confirmation_url: string;
+  status: ForwardingConfirmationStatus;
+  auto_confirm_error: string | null;
+  created_at: string;
+};
+
 /**
  * Row shapes keyed by table name, for use with a typed Supabase client.
  * `Views`/`Functions`/`Enums`/`CompositeTypes` are required (even empty) to
@@ -146,6 +159,13 @@ export type Database = {
         Insert: Partial<MerchantAliasMap> &
           Pick<MerchantAliasMap, "user_id" | "raw_merchant_key" | "display_merchant">;
         Update: Partial<MerchantAliasMap>;
+        Relationships: [];
+      };
+      forwarding_confirmations: {
+        Row: ForwardingConfirmation;
+        Insert: Partial<ForwardingConfirmation> &
+          Pick<ForwardingConfirmation, "user_id" | "confirmation_url">;
+        Update: Partial<ForwardingConfirmation>;
         Relationships: [];
       };
     };

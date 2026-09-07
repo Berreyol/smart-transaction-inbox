@@ -4,10 +4,12 @@ import { Alert, FlatList, RefreshControl, StyleSheet, Text, View } from "react-n
 import { BankAccountPickerModal } from "../components/BankAccountPickerModal";
 import { CategoryModal } from "../components/CategoryModal";
 import { EditPendingTransactionModal } from "../components/EditPendingTransactionModal";
+import { ForwardingConfirmationBanner } from "../components/ForwardingConfirmationBanner";
 import { PendingTransactionCard } from "../components/PendingTransactionCard";
 import { useAuthStore } from "../store/authStore";
 import { useBankAccountsStore } from "../store/bankAccountsStore";
 import { useCategoriesStore } from "../store/categoriesStore";
+import { useForwardingConfirmationStore } from "../store/forwardingConfirmationStore";
 import { useInboxStore } from "../store/inboxStore";
 import type { PendingTransaction, PendingTransactionEdits } from "../types/database";
 import { normalizeMerchantKey } from "../utils/merchant";
@@ -23,6 +25,9 @@ export function InboxScreen() {
   const bankAccounts = useBankAccountsStore((state) => state.items);
   const fetchBankAccounts = useBankAccountsStore((state) => state.fetchBankAccounts);
   const subscribeBankAccounts = useBankAccountsStore((state) => state.subscribe);
+  const pendingConfirmations = useForwardingConfirmationStore((state) => state.items);
+  const fetchPendingConfirmations = useForwardingConfirmationStore((state) => state.fetchPending);
+  const subscribeConfirmations = useForwardingConfirmationStore((state) => state.subscribe);
   const [approvingItem, setApprovingItem] = useState<PendingTransaction | null>(null);
   const [pendingCategory, setPendingCategory] = useState<string | null>(null);
   const [editingItem, setEditingItem] = useState<PendingTransaction | null>(null);
@@ -36,10 +41,13 @@ export function InboxScreen() {
     const unsubscribeCategories = subscribeCategories(userId);
     fetchBankAccounts(userId);
     const unsubscribeBankAccounts = subscribeBankAccounts(userId);
+    fetchPendingConfirmations(userId);
+    const unsubscribeConfirmations = subscribeConfirmations(userId);
     return () => {
       unsubscribe();
       unsubscribeCategories();
       unsubscribeBankAccounts();
+      unsubscribeConfirmations();
     };
   }, [
     userId,
@@ -50,6 +58,8 @@ export function InboxScreen() {
     subscribeCategories,
     fetchBankAccounts,
     subscribeBankAccounts,
+    fetchPendingConfirmations,
+    subscribeConfirmations,
   ]);
 
   const suggestedCategory = approvingItem
@@ -112,6 +122,15 @@ export function InboxScreen() {
         contentContainerStyle={items.length === 0 && styles.emptyContainer}
         refreshControl={
           <RefreshControl refreshing={isLoading} onRefresh={() => userId && fetchPending(userId)} />
+        }
+        ListHeaderComponent={
+          pendingConfirmations.length > 0 ? (
+            <>
+              {pendingConfirmations.map((item) => (
+                <ForwardingConfirmationBanner key={item.id} item={item} />
+              ))}
+            </>
+          ) : null
         }
         ListEmptyComponent={
           <View style={styles.empty}>

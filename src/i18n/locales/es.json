@@ -15,7 +15,8 @@
     "chooseCategory": "Elige una categoría",
     "genericErrorMessage": "Algo salió mal — inténtalo de nuevo.",
     "loading": "Cargando…",
-    "cantBeUndone": "Esto no se puede deshacer."
+    "cantBeUndone": "Esto no se puede deshacer.",
+    "dismiss": "Descartar"
   },
   "nav": {
     "inbox": "Inbox",
@@ -117,6 +118,12 @@
     "rejectTitle": "¿Rechazar transacción?",
     "approveFailedTitle": "No se pudo aprobar",
     "editFailedTitle": "No se pudieron guardar los cambios"
+  },
+  "forwardingConfirmation": {
+    "title": "Confirma el reenvío de correo",
+    "body": "Google envió una solicitud de confirmación para tu configuración de reenvío. Toca Confirmar para aprobarla.",
+    "bodyWithEmail": "Google envió una solicitud de confirmación para el reenvío desde {{email}}. Toca Confirmar para aprobarla.",
+    "confirmButton": "Confirmar"
   },
   "transactions": {
     "filterAll": "Todas",
