@@ -1,0 +1,30 @@
+name = "berry-cash-email-worker"
+main = "src/index.ts"
+compatibility_date = "2026-09-06"
+
+# Default (production) environment.
+[vars]
+# Full URL of the production parse-email edge function. Replace
+# <project-ref> with your production Supabase project's ref.
+SUPABASE_PARSE_EMAIL_URL = "https://<project-ref>.supabase.co/functions/v1/parse-email"
+
+# WEBHOOK_TOKEN is a secret, not a plain var — never put it here. Set it with:
+#   npx wrangler secret put WEBHOOK_TOKEN
+# using the same value you set on the Supabase side with:
+#   supabase secrets set WEBHOOK_TOKEN=<random-string>
+
+# ----------------------------------------------------------------------------
+# Dev environment: deploys as a *separate* worker ("berry-cash-email-worker-dev",
+# wrangler's default naming for `--env dev`), pointed at the dev Supabase
+# project instead of production — the Cloudflare equivalent of the old
+# "second Pipedream workflow" setup for keeping real production email traffic
+# out of the dev backend. Give this its own Email Routing rule (a specific
+# address, e.g. dev-inbox@yourdomain.com, rather than the catch-all which
+# should stay pointed at the default/production worker) so dev traffic never
+# touches the production worker or its secrets.
+#
+# Deploy:  npx wrangler deploy --env dev
+# Secret:  npx wrangler secret put WEBHOOK_TOKEN --env dev
+# ----------------------------------------------------------------------------
+[env.dev.vars]
+SUPABASE_PARSE_EMAIL_URL = "https://<dev-project-ref>.supabase.co/functions/v1/parse-email"
