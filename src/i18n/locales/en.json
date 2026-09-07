@@ -15,7 +15,8 @@
     "chooseCategory": "Choose a category",
     "genericErrorMessage": "Something went wrong — please try again.",
     "loading": "Loading…",
-    "cantBeUndone": "This can't be undone."
+    "cantBeUndone": "This can't be undone.",
+    "dismiss": "Dismiss"
   },
   "nav": {
     "inbox": "Inbox",
@@ -117,6 +118,12 @@
     "rejectTitle": "Reject transaction?",
     "approveFailedTitle": "Couldn't approve",
     "editFailedTitle": "Couldn't save changes"
+  },
+  "forwardingConfirmation": {
+    "title": "Confirm email forwarding",
+    "body": "Google sent a confirmation request for your forwarding setup. Tap Confirm to approve it.",
+    "bodyWithEmail": "Google sent a confirmation request for forwarding from {{email}}. Tap Confirm to approve it.",
+    "confirmButton": "Confirm"
   },
   "transactions": {
     "filterAll": "All",
