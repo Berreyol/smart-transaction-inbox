@@ -1,7 +1,7 @@
 // ============================================================================
 // State for pending Gmail auto-forward confirmations. Rows are created by
 // parse-email's forwarding-confirmation branch when a user sets up mail
-// forwarding to their personalized address (see migration 0013 and that
+// forwarding to their personalized address (see migration 0014 and that
 // function's index.ts for the full flow, including why the confirmation URL
 // is safe to fetch/display). Most confirmations resolve automatically
 // server-side; this store only ever surfaces ones still 'pending', so the
