@@ -33,6 +33,17 @@ interface Env {
 }
 
 export default {
+  // Not used by Email Routing (which invokes email() directly) — only here
+  // so a stray HTTP request (a health check, `wrangler dev`'s own preview
+  // ping, someone poking the deployed URL) gets a plain response instead of
+  // the "Handler does not export a fetch() function" error a Worker with no
+  // fetch() at all returns for any non-email request.
+  fetch(): Response {
+    return new Response("This worker only handles inbound email (Cloudflare Email Routing), not HTTP requests.", {
+      status: 200,
+    });
+  },
+
   async email(message: ForwardableEmailMessage, env: Env, _ctx: ExecutionContext): Promise<void> {
     let parsed;
     try {
