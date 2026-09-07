@@ -149,7 +149,7 @@ Full step-by-step (domain setup, Email Routing rule, `wrangler` deploy) is in [`
 2. `cd cloudflare/email-worker && npm install && npx wrangler login`.
 3. Point `wrangler.toml`'s `SUPABASE_PARSE_EMAIL_URL` at your project's `parse-email` function URL, then `npx wrangler secret put WEBHOOK_TOKEN` (same value as step 2 above).
 4. `npm run deploy`.
-5. In the Cloudflare dashboard, add a **catch-all** Email Routing rule that sends to this worker — that's what makes any `local-part+<forwarding_token>@yourdomain.com` reach it, the same way a single Pipedream address used to.
+5. In the Cloudflare dashboard, add a **catch-all** Email Routing rule that sends to this worker, and **enable subaddressing** (Email Routing → Settings) — the catch-all rule alone isn't enough for `local-part+<forwarding_token>@yourdomain.com` to actually reach it; subaddressing is what makes Cloudflare treat the `+tag` variant as matching the same rule as the plain address.
 
 The edge function expects a plain JSON shape (`to`, `from` as bare address strings, `text`, `html`, a lowercased `headers` record) — see `PipedreamEmailEvent` in `supabase/functions/parse-email/index.ts`. The Worker (`cloudflare/email-worker/src/index.ts`) parses the raw MIME email with `postal-mime` and reshapes it into exactly that, so the edge function needed no changes for this transport.
 
