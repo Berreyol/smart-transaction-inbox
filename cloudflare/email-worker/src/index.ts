@@ -60,12 +60,25 @@ export default {
 
     // `message.to` is the SMTP envelope RCPT TO address — the exact address
     // this message was routed to under the Email Routing catch-all rule,
-    // including any "+token" tag, and more reliable than anything parsed out
-    // of headers/body (mirrors why parse-email prefers X-Forwarded-To/`to`
-    // over trusting `From`). `from` prefers the parsed MIME header (what a
-    // user actually forwarded from) over the SMTP envelope sender, since
-    // that's what parse-email's From-matching fallback expects to compare
-    // against `profiles.email`.
+    // including any "+token" tag. Unlike under the old Pipedream setup,
+    // where an auto-forward filter rule and a manual "Forward" put the
+    // personalized address in different places (the message's own `To:`
+    // header vs an X-Forwarded-To header added by the relay), Cloudflare
+    // Email Routing operates at the SMTP envelope level: `message.to` is the
+    // literal RCPT TO in both cases, since Cloudflare is always the final
+    // hop receiving the message directly. So it's unconditionally reliable
+    // here — but parse-email itself only ever reads a token out of the
+    // X-Forwarded-To *header* (see its getHeader() calls), never a plain
+    // `to` field, so it has to be injected as that header rather than passed
+    // as `to` for parse-email to actually pick it up. Verified against a
+    // real dev-project call: a plain `to` field alone leaves parse-email
+    // falling through to From-matching, which doesn't reliably identify the
+    // user for the same reason a plain `to` header didn't under Pipedream.
+    headers["x-forwarded-to"] = message.to;
+
+    // `from` prefers the parsed MIME header (what a user actually forwarded
+    // from) over the SMTP envelope sender, since that's what parse-email's
+    // From-matching fallback expects to compare against `profiles.email`.
     const payload = {
       from: parsed.from?.address ?? message.from,
       to: message.to,
