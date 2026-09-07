@@ -4,21 +4,21 @@ A personal finance app that turns forwarded bank emails into reviewable transact
 
 ## How it works (Method B: Sender Matching)
 
-Every user forwards their bank emails to **one global inbound address**, personalized with a per-user `+tag` (e.g. `base+ab12cd34ef56@pipedream.net` — shown in-app via the "@" header button). [Pipedream](https://pipedream.com)'s Email trigger catches inbound mail on that address, parses it, and a workflow step POSTs the parsed email as JSON to a Supabase Edge Function. The function figures out *which user* the email belongs to by matching that `+tag` (each profile's `forwarding_token`) against a `profiles` table, falling back to the email's `From` address if no tag is present — not by parsing bank-specific templates or integrating with each bank individually.
+Every user forwards their bank emails to **one global inbound address**, personalized with a per-user `+tag` (e.g. `inbox+ab12cd34ef56@yourdomain.com` — shown in-app via the "@" header button). A [Cloudflare Email Routing](https://developers.cloudflare.com/email-routing/) catch-all rule sends inbound mail on that address to a Cloudflare Worker (`cloudflare/email-worker/`), which parses the raw MIME email and POSTs it as JSON to a Supabase Edge Function. The function figures out *which user* the email belongs to by matching that `+tag` (each profile's `forwarding_token`) against a `profiles` table, falling back to the email's `From` address if no tag is present — not by parsing bank-specific templates or integrating with each bank individually.
 
 ```
-┌──────────┐   forwards bank email   ┌──────────┐   HTTP POST step    ┌────────────────────┐
-│   User   │ ───────────────────────▶│Pipedream │────────────────────▶│  Edge Function      │
-│  (bank   │                         │ (Email   │                     │  parse-email        │
-│  email)  │                         │ trigger) │                     │                      │
-└──────────┘                         └──────────┘                     │ 1. to+tag → profiles │
-                                                                       │ 2. regex → amount/    │
-                                                                       │    type/merchant      │
-                                                                       │ 3. insert pending_    │
-                                                                       │    transactions       │
-                                                                       │    (service_role)     │
-                                                                       │ 4. Expo push          │
-                                                                       └──────────┬───────────┘
+┌──────────┐   forwards bank email   ┌────────────┐   parses MIME,      ┌────────────────────┐
+│   User   │ ───────────────────────▶│ Cloudflare │───POSTs JSON───────▶│  Edge Function      │
+│  (bank   │                         │ (Email     │                     │  parse-email        │
+│  email)  │                         │  Worker)   │                     │                      │
+└──────────┘                         └────────────┘                     │ 1. to+tag → profiles │
+                                                                         │ 2. regex → amount/    │
+                                                                         │    type/merchant      │
+                                                                         │ 3. insert pending_    │
+                                                                         │    transactions       │
+                                                                         │    (service_role)     │
+                                                                         │ 4. Expo push          │
+                                                                         └──────────┬───────────┘
                                                                                   │
                                                                                   ▼
                                                                      ┌────────────────────────┐
@@ -37,9 +37,13 @@ Every user forwards their bank emails to **one global inbound address**, persona
                                                                      └────────────────────────┘
 ```
 
+### Why Cloudflare Email Routing + a Worker, not Pipedream
+
+This used to be Pipedream (Email trigger → HTTP request step) — same shape, different transport. Pipedream's free plan caps usage at 100 credits/month and bills roughly 1 credit per email received, which scales with how much mail the app processes rather than with development effort; solo testing alone was on pace to exceed the free tier in a single month, well before any real users forwarding real bank mail. Cloudflare Email Routing is free with no inbound volume cap, and Workers' free tier comfortably covers this app's likely volume. The Worker (`cloudflare/email-worker/`) is deliberately "dumb": it only parses the raw MIME email and reshapes it into the same JSON shape Pipedream used to produce, then POSTs it to the same edge function — none of the identification/parsing logic below changed.
+
 ### Why matching by a forwarding token, not just sender
 
-The user's personalized forwarding address *is* their identity in this system — it's how the edge function knows whose inbox a parsed transaction belongs to. Each profile has a `forwarding_token` (`supabase/migrations/0006_forwarding_token.sql`); the app shows it as a `+tag` on the shared Pipedream address (the "@" header button), and the edge function looks for that tag in three places, in order: the `X-Forwarded-To` header, the `to` address, then falls back to matching `From` by email.
+The user's personalized forwarding address *is* their identity in this system — it's how the edge function knows whose inbox a parsed transaction belongs to. Each profile has a `forwarding_token` (`supabase/migrations/0006_forwarding_token.sql`); the app shows it as a `+tag` on the shared inbound address (the "@" header button), and the edge function looks for that tag in three places, in order: the `X-Forwarded-To` header, the `to` address, then falls back to matching `From` by email.
 
 This is deliberately not just "match the `From` address" (the original design), nor just "read the `to` address" — different forwarding setups put the personalized address in different places:
 
@@ -62,7 +66,7 @@ Anyone with the app's public publishable key can call the Supabase REST API dire
 | Navigation | React Navigation (bottom tabs) |
 | State | Zustand |
 | Backend | Supabase (Postgres + Auth + Realtime + Edge Functions) |
-| Email parsing | Pipedream Email trigger → HTTP step → Deno Edge Function |
+| Email parsing | Cloudflare Email Routing → Email Worker → Deno Edge Function |
 | Push notifications | Expo Push API |
 | Charts | react-native-gifted-charts |
 
@@ -97,9 +101,14 @@ Anyone with the app's public publishable key can call the Supabase REST API dire
 │   │   └── 0002_approve_pending_transaction.sql
 │   └── functions/
 │       └── parse-email/
-│           ├── index.ts             # Pipedream webhook handler
+│           ├── index.ts             # Inbound-email webhook handler
 │           ├── parser.ts            # Regex extraction (amount/type/merchant)
 │           └── deno.json
+├── cloudflare/
+│   └── email-worker/                # Cloudflare Email Worker: raw MIME -> JSON -> POST to parse-email
+│       ├── src/index.ts
+│       ├── wrangler.toml
+│       └── README.md                # Domain/Email Routing/deploy setup steps
 └── .env.example
 ```
 
@@ -124,25 +133,25 @@ supabase db push
 ### 2. Edge function secrets & deploy
 
 ```bash
-# Shared secret the Pipedream workflow must pass back on the webhook URL (?token=...)
+# Shared secret the Cloudflare Worker must pass back on the webhook URL (?token=...)
 supabase secrets set WEBHOOK_TOKEN=<random-string>
 
 supabase functions deploy parse-email --no-verify-jwt
 ```
 
-`--no-verify-jwt` is required because Pipedream, not a logged-in Supabase user, calls this endpoint — auth is instead enforced via `WEBHOOK_TOKEN`. `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` are injected automatically.
+`--no-verify-jwt` is required because the Cloudflare Worker, not a logged-in Supabase user, calls this endpoint — auth is instead enforced via `WEBHOOK_TOKEN`. `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` are injected automatically.
 
-### 3. Pipedream workflow
+### 3. Cloudflare Email Worker
 
-1. Create a new Pipedream workflow with trigger type **Email**. Pipedream mints a unique inbound address for the workflow — that's the *base* address; each user forwards to a personalized `base+<their forwarding_token>@...` variant of it (shown in-app via the "@" header button), which Pipedream still routes to the same workflow.
-2. Add a step after the trigger — **"Send an HTTP request"** (or a Node.js code step using `fetch`) — that POSTs the trigger's parsed event as JSON to:
-   ```
-   https://<project-ref>.supabase.co/functions/v1/parse-email?token=<the WEBHOOK_TOKEN you set>
-   ```
-   Body: `{{steps.trigger.event}}` (the full mailparser-parsed email object — the edge function reads `to`, `from`, `text`, and `html` off it).
-3. Deploy the workflow.
+Full step-by-step (domain setup, Email Routing rule, `wrangler` deploy) is in [`cloudflare/email-worker/README.md`](cloudflare/email-worker/README.md) — summary:
 
-The edge function expects the raw mailparser shape Pipedream's Email trigger produces (`to.value[0].address`, `from.value[0].address`, `text`, `html`, plus `headers`/`headerLines` for `X-Forwarded-To`). If you reshape the payload in a code step before forwarding it, update `PipedreamEmailEvent` and the field access in `supabase/functions/parse-email/index.ts` to match.
+1. Put a domain's DNS on Cloudflare and enable **Email Routing** for it.
+2. `cd cloudflare/email-worker && npm install && npx wrangler login`.
+3. Point `wrangler.toml`'s `SUPABASE_PARSE_EMAIL_URL` at your project's `parse-email` function URL, then `npx wrangler secret put WEBHOOK_TOKEN` (same value as step 2 above).
+4. `npm run deploy`.
+5. In the Cloudflare dashboard, add a **catch-all** Email Routing rule that sends to this worker — that's what makes any `local-part+<forwarding_token>@yourdomain.com` reach it, the same way a single Pipedream address used to.
+
+The edge function expects a plain JSON shape (`to`, `from` as bare address strings, `text`, `html`, a lowercased `headers` record) — see `PipedreamEmailEvent` in `supabase/functions/parse-email/index.ts`. The Worker (`cloudflare/email-worker/src/index.ts`) parses the raw MIME email with `postal-mime` and reshapes it into exactly that, so the edge function needed no changes for this transport.
 
 ### 4. App environment
 
@@ -150,9 +159,9 @@ The edge function expects the raw mailparser shape Pipedream's Email trigger pro
 cp .env.example .env
 # fill in EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY
 # (publishable key only — never put the service_role key in the app)
-# optionally fill in EXPO_PUBLIC_INBOUND_EMAIL_ADDRESS (the base Pipedream
-# address from step 3) so the app can display each user's full personalized
-# forwarding address instead of just their token
+# optionally fill in EXPO_PUBLIC_INBOUND_EMAIL_ADDRESS (the address routed
+# to the Cloudflare Worker in step 3) so the app can display each user's
+# full personalized forwarding address instead of just their token
 ```
 
 ### 5. Push notifications
@@ -172,15 +181,15 @@ npx expo run:ios
 
 ### 6. Testing against a separate dev environment
 
-Real production email traffic should stay confined to the production Supabase project — a "dev" backend is a place you intentionally break things (schema changes, resets), and real users' bank transaction data has no reason to live there. Don't fan Pipedream's production workflow out to both projects.
+Real production email traffic should stay confined to the production Supabase project — a "dev" backend is a place you intentionally break things (schema changes, resets), and real users' bank transaction data has no reason to live there. Don't fan the production worker out to both projects.
 
 Instead, set up a fully parallel, second stack that only you (or whoever's testing) feeds:
 
 1. Migrations and the `parse-email` deploy against the dev Supabase project are handled by the `deploy-dev` job in `.github/workflows/supabase-release.yml` (see below) rather than run by hand.
-2. Create a **second, separate Pipedream workflow** with its own Email trigger, giving you a second base inbound address distinct from production's. Point its HTTP step at the dev project's function URL with the dev `WEBHOOK_TOKEN` (the same value stored as the `DEV_WEBHOOK_TOKEN` GitHub secret below).
-3. Sign up in the app (pointed at the dev project) to get a dev `forwarding_token`, then forward real bank emails to `<dev-pipedream-base>+<your-dev-token>@...` whenever you want to exercise the parser/pipeline end-to-end with real-shaped data — this generates real Pipedream execution and real parsing, just gated to traffic you produce yourself rather than mirroring every user.
+2. Deploy the **`dev` environment** of the Cloudflare Worker — a separate worker (`npx wrangler deploy --env dev` from `cloudflare/email-worker/`, see the `[env.dev]` section in its `wrangler.toml`) pointed at the dev project's function URL, with its own secret (`npx wrangler secret put WEBHOOK_TOKEN --env dev`, same value as the `DEV_WEBHOOK_TOKEN` GitHub secret below). Give it its own Email Routing rule (a specific address like `dev-inbox@yourdomain.com`, not the catch-all) so dev traffic never touches the production worker.
+3. Sign up in the app (pointed at the dev project) to get a dev `forwarding_token`, then forward real bank emails to `dev-inbox+<your-dev-token>@yourdomain.com` whenever you want to exercise the parser/pipeline end-to-end with real-shaped data — this generates real parsing, just gated to traffic you produce yourself rather than mirroring every user.
 
-For quick iteration on parser changes alone, skip Pipedream entirely and `curl` a saved sample payload straight at the dev function URL — or use `scripts/seed-pending-transaction.mjs`, which does exactly that with a few built-in scenarios (unparseable, fully-parseable, partially-parseable) so the Inbox always has realistic pending rows to test against. Needs `TEST_WEBHOOK_TOKEN` and `TEST_USER_FORWARDING_TOKEN` in `.env` (see `.env.example` and the script's header comment) — both unprefixed so they never reach the app bundle. Refuses to run if `EXPO_PUBLIC_SUPABASE_URL` points at production.
+For quick iteration on parser changes alone, skip the Worker entirely and `curl` a saved sample payload straight at the dev function URL — or use `scripts/seed-pending-transaction.mjs`, which does exactly that with a few built-in scenarios (unparseable, fully-parseable, partially-parseable) so the Inbox always has realistic pending rows to test against. Needs `TEST_WEBHOOK_TOKEN` and `TEST_USER_FORWARDING_TOKEN` in `.env` (see `.env.example` and the script's header comment) — both unprefixed so they never reach the app bundle. Refuses to run if `EXPO_PUBLIC_SUPABASE_URL` points at production.
 
 **Pushing migrations + the function to dev from a feature branch**: the `deploy-dev` job in `supabase-release.yml` runs on manual dispatch (`target: dev`, the default) against whatever branch/ref you pick — no PR needed:
 
@@ -188,7 +197,7 @@ For quick iteration on parser changes alone, skip Pipedream entirely and `curl` 
 gh workflow run supabase-release.yml --ref feature/your-branch -f target=dev
 ```
 
-It links the dev project, sets the `WEBHOOK_TOKEN` secret on it from the `DEV_WEBHOOK_TOKEN` GitHub Actions secret, pushes migrations, and deploys `parse-email`. One-time setup: add a `DEV_WEBHOOK_TOKEN` secret to the `supabase-dev` GitHub environment (Settings → Environments → `supabase-dev` → Secrets) with the same value you want Pipedream's dev workflow to pass as `?token=...`.
+It links the dev project, sets the `WEBHOOK_TOKEN` secret on it from the `DEV_WEBHOOK_TOKEN` GitHub Actions secret, pushes migrations, and deploys `parse-email`. One-time setup: add a `DEV_WEBHOOK_TOKEN` secret to the `supabase-dev` GitHub environment (Settings → Environments → `supabase-dev` → Secrets) with the same value you want the dev Cloudflare Worker to pass as `?token=...`.
 
 **Pointing an EAS build at the right backend**: EAS cloud builds don't upload gitignored files, so `.env` alone won't reach a cloud build — `EXPO_PUBLIC_SUPABASE_URL`/`EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` need to be registered as EAS environment variables instead of (or in addition to) `.env`. `eas.json`'s `development`/`preview` build profiles are linked to an EAS environment named `development`, and `production` to one named `production`, so the right project's credentials get injected automatically per profile:
 

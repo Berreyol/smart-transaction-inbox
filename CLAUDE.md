@@ -4,14 +4,17 @@ Guidance for Claude Code (or any future agent) working in this repository. See `
 
 ## What this is
 
-A React Native (Expo) + Supabase app. Users forward bank notification emails to a personalized address (a `+tag` on one global Pipedream inbound address, keyed by each profile's `forwarding_token`); a step in that Pipedream workflow POSTs the parsed email to a Supabase Edge Function, which regex-parses the body, identifies the user by that token (falling back to matching the `From` header by email), and drops a row into `pending_transactions` for in-app approval. Full flow is diagrammed in `README.md` — read that first for the "why," this file is the "how to work in the code."
+A React Native (Expo) + Supabase app. Users forward bank notification emails to a personalized address (a `+tag` on one global inbound address, keyed by each profile's `forwarding_token`); a Cloudflare Email Worker (`cloudflare/email-worker/`) parses the raw MIME email and POSTs it as JSON to a Supabase Edge Function, which regex-parses the body, identifies the user by that token (falling back to matching the `From` header by email), and drops a row into `pending_transactions` for in-app approval. Full flow is diagrammed in `README.md` — read that first for the "why," this file is the "how to work in the code."
 
-## Two runtimes, one repo
+Inbound email transport used to be Pipedream (Email trigger → HTTP request step); it was replaced with the Cloudflare Email Worker because Pipedream's free plan caps usage at 100 credits/month, billed roughly 1 credit per email received — a cost that scales with email volume, not with development effort, and was on pace to be exceeded by solo testing alone. See `cloudflare/email-worker/src/index.ts`'s header comment for the full rationale. The edge function's parsing/identification logic didn't change at all — only the transport that calls it did.
 
-This repo has **two separate TypeScript environments that must not be conflated**:
+## Three runtimes, one repo
+
+This repo has **three separate TypeScript environments that must not be conflated**:
 
 - `/App.tsx`, `/index.ts`, `/src/**` — React Native app, Node/Metro tooling, checked by the root `tsconfig.json`.
 - `/supabase/functions/**` — Deno edge functions. `tsconfig.json` explicitly excludes `supabase/functions`; there's a separate `supabase/functions/deno.json` for editor support. Don't try to make `tsc --noEmit` at the root cover the edge function — it can't (`Deno` global, `https://esm.sh/...` imports, no `npm` node_modules resolution).
+- `/cloudflare/email-worker/**` — a Cloudflare Worker (Workers runtime, not Node or Deno). Its own `package.json`/`node_modules`/`tsconfig.json`; root `tsconfig.json` excludes `cloudflare` for the same reason it excludes `supabase/functions` — `@cloudflare/workers-types`' ambient globals (its own `Request`/`Response`/etc.) would conflict with the root project's DOM lib types if both were type-checked together. Run `npm install` inside `cloudflare/email-worker/`, not from the repo root.
 
 ## Verifying changes
 
@@ -19,6 +22,7 @@ This repo has **two separate TypeScript environments that must not be conflated*
 - If you add a native module, use `npx expo install <pkg>` (not plain `npm install`) — it pins the SDK-57-compatible version and applies any config plugin wiring automatically (check `git diff app.config.ts` after).
 - App config is `app.config.ts` (dynamic), not a static `app.json` — there is no `app.json` in this repo. It branches `bundleIdentifier`/`package`/`name` on `process.env.APP_VARIANT` so a `development`-profile EAS build installs as a separate app ("...Dev") alongside a `production`-profile build on the same device, rather than overwriting it. `APP_VARIANT` is set per build profile in `eas.json`, not in `.env`.
 - Edge function: no local Deno test harness is set up. Sanity-check `supabase/functions/parse-email/parser.ts` logic with plain Node (it's dependency-free, pure regex — copy the functions into a scratch `.mjs` file and run sample strings through it) rather than trying to run the Deno handler locally.
+- Cloudflare Worker: `cd cloudflare/email-worker && npm run typecheck`. `npm run dev` (`wrangler dev`) exposes a local `/cdn-cgi/handler/email` endpoint you can POST a raw `.eml` file at to exercise the `email()` handler without real inbound mail — see that directory's `README.md`.
 - A Metro bundle smoke test (`npx expo export --platform ios --output-dir <scratch-dir>`) is a good way to catch import/native-module errors that `tsc` won't — it needs a `.env` with dummy `EXPO_PUBLIC_SUPABASE_URL`/`EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` values present (the client throws early if they're missing). Delete the exported output and any `.env` you created for the test afterward — don't commit either.
 
 ## The `Database` type gotcha (already fixed, don't reintroduce)

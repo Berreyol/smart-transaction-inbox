@@ -1,0 +1,89 @@
+// ============================================================================
+// Cloudflare Email Worker — replaces Pipedream's "Email trigger -> HTTP
+// request step" as the transport that turns an inbound email into a JSON
+// POST at the Supabase edge function.
+//
+// Why this exists instead of Pipedream: Pipedream's free plan caps usage at
+// 100 credits/month and bills roughly 1 credit per email received —
+// solo testing alone was on pace to exceed that in a single month, well
+// before any real users. Cloudflare Email Routing is free with no inbound
+// volume cap, and Workers' free tier (100k requests/day) comfortably covers
+// this at any scale this app is likely to reach. See docs/monetization-plan.md
+// sibling discussion in the project history for the cost comparison that
+// motivated this move.
+//
+// Deliberately dumb: this Worker's only job is "parse the raw MIME email,
+// reshape it into the JSON shape parse-email already expects, POST it to one
+// fixed URL." All identification/parsing/business logic stays server-side in
+// the Deno edge function (unit-tested, single source of truth) rather than
+// being duplicated or guessed at here — see supabase/functions/parse-email.
+//
+// The reshaped payload intentionally matches the `PipedreamEmailEvent` shape
+// parse-email/index.ts already parses (plain-string `from`/`to`, a lowercase
+// `headers` record) so that function needed zero changes for this migration.
+// ============================================================================
+
+import PostalMime from "postal-mime";
+
+interface Env {
+  /** Full URL of the parse-email edge function, e.g. https://<ref>.supabase.co/functions/v1/parse-email */
+  SUPABASE_PARSE_EMAIL_URL: string;
+  /** Shared secret matching the edge function's WEBHOOK_TOKEN. Set with `wrangler secret put WEBHOOK_TOKEN`. */
+  WEBHOOK_TOKEN: string;
+}
+
+export default {
+  async email(message: ForwardableEmailMessage, env: Env, _ctx: ExecutionContext): Promise<void> {
+    let parsed;
+    try {
+      parsed = await PostalMime.parse(message.raw);
+    } catch (err) {
+      console.error("Failed to parse inbound email:", err);
+      return;
+    }
+
+    const headers: Record<string, string> = {};
+    for (const h of parsed.headers) {
+      headers[h.key.toLowerCase()] = h.value;
+    }
+
+    // `message.to` is the SMTP envelope RCPT TO address — the exact address
+    // this message was routed to under the Email Routing catch-all rule,
+    // including any "+token" tag, and more reliable than anything parsed out
+    // of headers/body (mirrors why parse-email prefers X-Forwarded-To/`to`
+    // over trusting `From`). `from` prefers the parsed MIME header (what a
+    // user actually forwarded from) over the SMTP envelope sender, since
+    // that's what parse-email's From-matching fallback expects to compare
+    // against `profiles.email`.
+    const payload = {
+      from: parsed.from?.address ?? message.from,
+      to: message.to,
+      subject: parsed.subject ?? "",
+      text: parsed.text ?? "",
+      html: parsed.html ?? "",
+      headers,
+    };
+
+    const url = new URL(env.SUPABASE_PARSE_EMAIL_URL);
+    url.searchParams.set("token", env.WEBHOOK_TOKEN);
+
+    try {
+      const res = await fetch(url.toString(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        console.error(`parse-email webhook returned ${res.status}: ${await res.text()}`);
+      }
+    } catch (err) {
+      // Deliberately not calling message.setReject() here: the SMTP sender
+      // for a forwarded bank email is typically the bank or the user's own
+      // mail provider, not a person who could act on a bounce — rejecting
+      // would just generate a confusing bounce message with no one able to
+      // retry, whereas logging (visible via `wrangler tail`) is actionable
+      // for whoever's operating this worker.
+      console.error("Failed to POST to parse-email:", err);
+    }
+  },
+} satisfies ExportedHandler<Env>;
