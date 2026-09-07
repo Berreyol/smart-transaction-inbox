@@ -119,12 +119,7 @@ Streams live logs — useful since a failed parse or a failed POST to
 `parse-email` is only ever logged (see the comment in `src/index.ts` on why
 this worker never calls `message.setReject()`), not surfaced anywhere else.
 
-## Known follow-up
-
-This worker always POSTs to `parse-email` — it does not yet know about
-`handle-forwarding-confirmation` (the Gmail auto-forward confirmation
-feature). That dispatch decision was deliberately deferred to stay inside
-`parse-email` itself (see that function's future changes) rather than being
-guessed at in this transport layer, where a wrong guess could silently drop
-a real transaction email. No worker changes should be needed once that's
-wired up — this worker will keep sending the same shaped payload either way.
+This worker always POSTs to `parse-email` regardless of email type — the
+dispatch between a bank transaction email and Gmail's forwarding-confirmation
+notice happens inside `parse-email` itself (see that function's header
+comment), not here, so this worker never needed to know the difference.

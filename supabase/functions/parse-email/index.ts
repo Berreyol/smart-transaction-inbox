@@ -3,10 +3,29 @@
 //
 // Receives a POST from the inbound-email transport (currently a Cloudflare
 // Email Worker, cloudflare/email-worker/ — previously a Pipedream workflow,
-// see that directory's README for why it moved) when a user forwards a bank
-// email to their personalized address. Identifies the user, extracts
-// transaction details with regex, stores a pending_transactions row, and
-// pushes an Expo notification asking the user to review it.
+// see that directory's README for why it moved) for every email a user's
+// personalized address receives. That's two different kinds of email,
+// dispatched after a shared identify-the-user step:
+//
+//   1. A forwarded bank notification — extracts transaction details with
+//      regex, stores a pending_transactions row, and pushes an Expo
+//      notification asking the user to review it.
+//   2. Gmail's "confirm auto-forwarding" email — the message Google sends
+//      the first time a user sets up auto-forwarding from their own Gmail
+//      to this personalized address. Historically this required manually
+//      opening that email and clicking the link for every new user; this
+//      instead attempts the confirmation server-side, falling back to
+//      surfacing an in-app "Confirm" button (see ForwardingConfirmationBanner)
+//      when the automatic attempt doesn't succeed. See the SECURITY comment
+//      further down and _shared/forwardingConfirmationParser.ts for why the
+//      URL this acts on is safe to fetch server-side / show to the user.
+//
+// This dispatch deliberately lives here rather than in the transport layer
+// (a Pipedream workflow branch, or guessing in the Cloudflare Worker) — see
+// git history for supabase/functions/handle-forwarding-confirmation, a
+// separate function this replaced: it was never actually deployed (the
+// transport always posted everything here regardless), and a wrong guess at
+// the transport layer risked silently dropping a real transaction email.
 //
 // Identifying the user: every profile has a forwarding_token (see migration
 // 0006), and the app shows each user a personalized address of the form
@@ -20,7 +39,9 @@
 // "Forward" doesn't add that header at all, but does put the personalized
 // address in `to` (since it's the actual recipient of the new message) and
 // rewrites From to the forwarder's own address, which is what the final
-// fallback catches.
+// fallback catches. (The Cloudflare Worker sets X-Forwarded-To from the SMTP
+// envelope for every email, confirmation notices included, so this same
+// lookup identifies the user for both dispatch branches without change.)
 //
 // Expected payload shape (PipedreamEmailEvent below, name kept from this
 // function's original transport): `to`/`from` as either a bare address
@@ -37,13 +58,14 @@
 // ============================================================================
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
+import { parseForwardingConfirmationEmail } from "../_shared/forwardingConfirmationParser.ts";
 import { matchBankAccount, parseTransactionEmail } from "./parser.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-// Shared secret configured as a query param on the URL the Pipedream
-// workflow POSTs to (e.g. https://<project-ref>.supabase.co/functions/v1/parse-email?token=xxx),
-// so only that workflow can trigger this function. Set with:
+// Shared secret configured as a query param on the URL the Cloudflare
+// Worker POSTs to (e.g. https://<project-ref>.supabase.co/functions/v1/parse-email?token=xxx),
+// so only that worker can trigger this function. Set with:
 //   supabase secrets set WEBHOOK_TOKEN=xxx
 const WEBHOOK_TOKEN = Deno.env.get("WEBHOOK_TOKEN");
 
@@ -132,7 +154,7 @@ function htmlToText(html: string): string {
     .trim();
 }
 
-async function sendExpoPushNotification(pushToken: string, body: string) {
+async function sendExpoPushNotification(pushToken: string, title: string, body: string) {
   try {
     const res = await fetch(EXPO_PUSH_URL, {
       method: "POST",
@@ -144,7 +166,7 @@ async function sendExpoPushNotification(pushToken: string, body: string) {
       body: JSON.stringify({
         to: pushToken,
         sound: "default",
-        title: "New transaction detected!",
+        title,
         body,
         data: { screen: "Inbox" },
       }),
@@ -156,6 +178,30 @@ async function sendExpoPushNotification(pushToken: string, body: string) {
     // A failed push notification should never fail the whole webhook —
     // the transaction is already safely stored and reviewable in-app.
     console.error("Expo push error:", err);
+  }
+}
+
+/**
+ * GETs an already-verified-genuine (see isGenuineGoogleForwardingConfirmationUrl
+ * in _shared/forwardingConfirmationParser.ts) Gmail forwarding confirmation
+ * URL. That confirmation is a stateless bearer link — possession of it is
+ * the proof of control over the destination address, no login/session
+ * required — so a plain server-side GET completes it exactly as a browser
+ * click would.
+ */
+async function attemptAutoConfirmForwarding(url: string): Promise<{ ok: boolean; error: string | null }> {
+  try {
+    const res = await fetch(url, {
+      method: "GET",
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (compatible; BerryCashForwardingConfirm/1.0; +https://github.com/Berreyol/smart-transaction-inbox)",
+      },
+    });
+    if (res.ok) return { ok: true, error: null };
+    return { ok: false, error: `HTTP ${res.status}` };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
   }
 }
 
@@ -226,12 +272,51 @@ Deno.serve(async (req: Request) => {
   }
 
   if (!profile) {
-    // No matching user — silently accept so Pipedream doesn't retry forever,
-    // but do nothing further. Nothing to notify, nothing to store.
+    // No matching user — silently accept so the transport doesn't retry
+    // forever, but do nothing further. Nothing to notify, nothing to store.
     console.warn(
       `No profile found for forwarding token "${forwardingToken}" or sender "${senderEmail}"`,
     );
     return new Response("OK (no matching user)", { status: 200 });
+  }
+
+  // 1b. Dispatch: is this Gmail's "confirm auto-forwarding" notice rather
+  // than a bank transaction email? parseForwardingConfirmationEmail is the
+  // single safety gate for this whole branch — it returns null for anything
+  // that doesn't contain a URL genuinely hosted on mail.google.com,
+  // regardless of how convincing the surrounding text looks (see its own
+  // comments and _shared/forwardingConfirmationParser.ts's header for the
+  // full SSRF/phishing threat model this closes off). Checked after user
+  // identification (not before) since both branches need it and it's the
+  // same lookup either way.
+  const confirmation = parseForwardingConfirmationEmail(rawText);
+  if (confirmation) {
+    const confirmResult = await attemptAutoConfirmForwarding(confirmation.confirmationUrl);
+
+    const { error: confirmationInsertError } = await supabase.from("forwarding_confirmations").insert({
+      user_id: profile.id,
+      source_email: confirmation.sourceEmail,
+      confirmation_url: confirmation.confirmationUrl,
+      status: confirmResult.ok ? "auto_confirmed" : "pending",
+      auto_confirm_error: confirmResult.error,
+    });
+
+    if (confirmationInsertError) {
+      console.error("Error inserting forwarding confirmation:", confirmationInsertError);
+      return new Response("Internal error", { status: 500 });
+    }
+
+    if (profile.expo_push_token) {
+      await sendExpoPushNotification(
+        profile.expo_push_token,
+        confirmResult.ok ? "Forwarding confirmed" : "Action needed",
+        confirmResult.ok
+          ? "Your bank email forwarding is set up and ready to go."
+          : "Tap to confirm your email forwarding setup.",
+      );
+    }
+
+    return new Response("OK", { status: 200 });
   }
 
   // 2. Parse the email with the generic regex engine (handles known
@@ -309,7 +394,7 @@ Deno.serve(async (req: Request) => {
     const amountLabel = parsed.amount != null ? `$${parsed.amount.toFixed(2)}` : "";
     const detail = displayMerchant ?? matchedAccount?.account_alias ?? null;
     const body = detail ? `${detail} ${amountLabel}`.trim() : amountLabel;
-    await sendExpoPushNotification(profile.expo_push_token, body);
+    await sendExpoPushNotification(profile.expo_push_token, "New transaction detected!", body);
   }
 
   return new Response("OK", { status: 200 });
