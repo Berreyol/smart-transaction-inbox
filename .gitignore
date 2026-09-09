@@ -39,6 +39,9 @@ yarn-error.*
 # Claude Code local settings
 .claude/
 
+# Vs Code
+.vscode/
+
 # local env files
 .env
 .env*.local
