@@ -10,7 +10,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
+  Image,
   Platform,
   Pressable,
   StyleSheet,
@@ -18,6 +18,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { applyLanguagePreference, SUPPORTED_LANGUAGES, type SupportedLanguage } from "../i18n";
 import { useAuthStore } from "../store/authStore";
 
@@ -49,6 +50,7 @@ export function AuthScreen() {
       style={styles.container}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
+      <Image source={require("../../assets/logo.png")} style={styles.logo} resizeMode="contain" />
       <Text style={styles.title}>{t("auth.title")}</Text>
       <Text style={styles.subtitle}>
         {mode === "signIn" ? t("auth.subtitleSignIn") : t("auth.subtitleSignUp")}
@@ -120,6 +122,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: 24,
     backgroundColor: "#fff",
+  },
+  logo: {
+    width: 96,
+    height: 96,
+    alignSelf: "center",
+    marginBottom: 16,
   },
   title: {
     fontSize: 24,
