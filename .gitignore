@@ -21,6 +21,9 @@ expo-env.d.ts
 # Metro
 .metro-health-check*
 
+# Cloudflare Workers (cloudflare/email-worker) local dev state
+.wrangler/
+
 # debug
 npm-debug.*
 yarn-debug.*
@@ -29,6 +32,12 @@ yarn-error.*
 # macOS
 .DS_Store
 *.pem
+
+# IDE
+.idea/
+
+# Claude Code local settings
+.claude/
 
 # local env files
 .env
