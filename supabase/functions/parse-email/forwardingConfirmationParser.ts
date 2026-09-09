@@ -1,10 +1,9 @@
 // ============================================================================
 // forwardingConfirmationParser.ts
-// Shared by parse-email (the only function that imports it — see that
-// function's index.ts for how the dispatch works). Pure regex extraction
-// for Gmail's "confirm auto-forwarding" email — the message Google sends to
-// a forwarding target the first time a Gmail user sets up auto-forwarding
-// to it. Example body:
+// Used by handleForwardingConfirmation.ts (see index.ts for how the dispatch
+// works). Pure regex extraction for Gmail's "confirm auto-forwarding" email
+// — the message Google sends to a forwarding target the first time a Gmail
+// user sets up auto-forwarding to it. Example body:
 //
 //   someone@gmail.com has requested to automatically forward
 //   mail to your email

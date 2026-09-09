@@ -5,7 +5,7 @@
 // the control this whole feature's safety depends on, so it's tested
 // against realistic attack payloads (domain-confusion tricks, SSRF targets,
 // phishing redirects), not just the happy path. Run with:
-//   deno test supabase/functions/_shared/forwardingConfirmationParser.test.ts
+//   deno test supabase/functions/parse-email/forwardingConfirmationParser.test.ts
 // ============================================================================
 
 import { assertEquals } from "jsr:@std/assert@1";
