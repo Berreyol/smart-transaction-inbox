@@ -1,45 +1,28 @@
 // ============================================================================
 // Handles Gmail's "confirm auto-forwarding" notice — the message Google
 // sends the first time a user sets up auto-forwarding from their own Gmail
-// to their personalized inbox address. Historically this required manually
-// opening that email and clicking the link for every new user; this instead
-// attempts the confirmation server-side, falling back to surfacing an
-// in-app "Confirm" button (see ForwardingConfirmationBanner) when the
-// automatic attempt doesn't succeed.
+// to their personalized inbox address. This surfaces an in-app "Confirm"
+// button (see ForwardingConfirmationBanner) that opens the link in a real
+// browser for the user to tap through.
+//
+// This used to also attempt the confirmation server-side via a bare POST to
+// the confirmation URL, treating any 2xx response as proof of success. That
+// was a false-positive machine: a real browser click is a full navigation
+// (cookies, Referer, sec-fetch-* headers all pointing back at the same URL —
+// confirmed against a live network capture on 2026-09-09), and Google
+// happily returns 200 for a POST missing all of that context without
+// actually confirming anything. There's no header/cookie we can add from a
+// Deno edge function that reproduces a genuine logged-in browser navigation,
+// so treating res.ok as "confirmed" was unverifiable and, in practice, wrong
+// — rows got marked auto_confirmed while forwarding was never actually
+// confirmed, hiding the banner the user needed to see. Don't reintroduce a
+// server-side fetch attempt here; always fall through to the manual banner.
 // ============================================================================
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { parseForwardingConfirmationEmail } from "./forwardingConfirmationParser.ts";
 import { sendExpoPushNotification } from "./notifications.ts";
 import type { ProfileRow } from "./identifyUser.ts";
-
-/**
- * Completes an already-verified-genuine (see isGenuineGoogleForwardingConfirmationUrl
- * in forwardingConfirmationParser.ts) Gmail forwarding confirmation URL.
- * Visiting the URL itself only loads a page with a "Confirm" button — that
- * button is a self-submitting form (`<form action="" method="post">`, no
- * named fields), so completing it server-side means POSTing an empty body
- * back to the same URL, not GETting it. That confirmation is a stateless
- * bearer action — possession of the URL is the proof of control over the
- * destination address, no login/session required — so this replicates
- * exactly what clicking the button does.
- */
-async function attemptAutoConfirmForwarding(url: string): Promise<{ ok: boolean; error: string | null }> {
-  try {
-    const res = await fetch(url, {
-      method: "POST",
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (compatible; BerryCashForwardingConfirm/1.0; +https://github.com/Berreyol/smart-transaction-inbox)",
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-    });
-    if (res.ok) return { ok: true, error: null };
-    return { ok: false, error: `HTTP ${res.status}` };
-  } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : String(err) };
-  }
-}
 
 /**
  * Returns null when `rawText` isn't a forwarding-confirmation email, so the
@@ -59,14 +42,11 @@ export async function handleForwardingConfirmation(
   const confirmation = parseForwardingConfirmationEmail(rawText);
   if (!confirmation) return null;
 
-  const confirmResult = await attemptAutoConfirmForwarding(confirmation.confirmationUrl);
-
   const { error: confirmationInsertError } = await supabase.from("forwarding_confirmations").insert({
     user_id: profile.id,
     source_email: confirmation.sourceEmail,
     confirmation_url: confirmation.confirmationUrl,
-    status: confirmResult.ok ? "auto_confirmed" : "pending",
-    auto_confirm_error: confirmResult.error,
+    status: "pending",
   });
 
   if (confirmationInsertError) {
@@ -77,10 +57,8 @@ export async function handleForwardingConfirmation(
   if (profile.expo_push_token) {
     await sendExpoPushNotification(
       profile.expo_push_token,
-      confirmResult.ok ? "Forwarding confirmed" : "Action needed",
-      confirmResult.ok
-        ? "Your bank email forwarding is set up and ready to go."
-        : "Tap to confirm your email forwarding setup.",
+      "Action needed",
+      "Tap to confirm your email forwarding setup.",
     );
   }
 
