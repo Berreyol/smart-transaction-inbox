@@ -1,10 +1,9 @@
 // ============================================================================
 // forwardingConfirmationParser.ts
-// Shared by parse-email (the only function that imports it — see that
-// function's index.ts for how the dispatch works). Pure regex extraction
-// for Gmail's "confirm auto-forwarding" email — the message Google sends to
-// a forwarding target the first time a Gmail user sets up auto-forwarding
-// to it. Example body:
+// Used by handleForwardingConfirmation.ts (see index.ts for how the dispatch
+// works). Pure regex extraction for Gmail's "confirm auto-forwarding" email
+// — the message Google sends to a forwarding target the first time a Gmail
+// user sets up auto-forwarding to it. Example body:
 //
 //   someone@gmail.com has requested to automatically forward
 //   mail to your email
@@ -20,15 +19,22 @@
 // sanity-checked with plain Node, same as parse-email/parser.ts.
 // ============================================================================
 
+// Confirmed against a real confirmation email (2026-09-09): Gmail currently
+// sends these from mail-settings.google.com, not mail.google.com. Both are
+// kept here since either could be genuine — Google hasn't documented this
+// as a hard migration, and a stale email template could still land on the
+// older host.
+const GENUINE_HOSTNAMES = ["mail.google.com", "mail-settings.google.com"];
+
 /**
  * Matches the security-critical property of this whole feature: we only ever
  * act on (fetch server-side, or show as a button in the app) a URL that
- * genuinely points at mail.google.com. An attacker can put an arbitrary
- * string in a spoofed email, but they cannot make that string a real, live
- * link hosted on Google's own domain — so this check alone rules out both
- * SSRF (the auto-confirm fetch could otherwise be pointed at internal
- * infrastructure or cloud metadata endpoints) and phishing (the in-app
- * button could otherwise point users at attacker-controlled content).
+ * genuinely points at one of GENUINE_HOSTNAMES. An attacker can put an
+ * arbitrary string in a spoofed email, but they cannot make that string a
+ * real, live link hosted on Google's own domain — so this check alone rules
+ * out both SSRF (the auto-confirm fetch could otherwise be pointed at
+ * internal infrastructure or cloud metadata endpoints) and phishing (the
+ * in-app button could otherwise point users at attacker-controlled content).
  *
  * Uses `new URL().hostname`, not a substring/regex match against the raw
  * string — a substring check would be bypassable with tricks like
@@ -43,7 +49,7 @@ export function isGenuineGoogleForwardingConfirmationUrl(candidate: string): boo
   }
   return (
     url.protocol === "https:" &&
-    url.hostname === "mail.google.com" &&
+    GENUINE_HOSTNAMES.includes(url.hostname) &&
     /^\/mail\/vf-/.test(url.pathname)
   );
 }

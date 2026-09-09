@@ -5,7 +5,7 @@
 // the control this whole feature's safety depends on, so it's tested
 // against realistic attack payloads (domain-confusion tricks, SSRF targets,
 // phishing redirects), not just the happy path. Run with:
-//   deno test supabase/functions/_shared/forwardingConfirmationParser.test.ts
+//   deno test supabase/functions/parse-email/forwardingConfirmationParser.test.ts
 // ============================================================================
 
 import { assertEquals } from "jsr:@std/assert@1";
@@ -42,9 +42,23 @@ Deno.test("isGenuineGoogleForwardingConfirmationUrl - accepts a real confirmatio
   assertEquals(isGenuineGoogleForwardingConfirmationUrl(REAL_CONFIRMATION_URL), true);
 });
 
+Deno.test("isGenuineGoogleForwardingConfirmationUrl - accepts mail-settings.google.com (Gmail's current sending host)", () => {
+  assertEquals(
+    isGenuineGoogleForwardingConfirmationUrl("https://mail-settings.google.com/mail/vf-abc"),
+    true,
+  );
+});
+
 Deno.test("isGenuineGoogleForwardingConfirmationUrl - rejects domain-confusion suffix trick", () => {
   assertEquals(
     isGenuineGoogleForwardingConfirmationUrl("https://mail.google.com.evil.com/mail/vf-abc"),
+    false,
+  );
+});
+
+Deno.test("isGenuineGoogleForwardingConfirmationUrl - rejects domain-confusion suffix trick on the settings host too", () => {
+  assertEquals(
+    isGenuineGoogleForwardingConfirmationUrl("https://mail-settings.google.com.evil.com/mail/vf-abc"),
     false,
   );
 });
