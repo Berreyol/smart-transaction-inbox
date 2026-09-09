@@ -37,6 +37,12 @@ jobs:
       - uses: dorny/paths-filter@v3
         id: filter
         with:
+          # Without an explicit base, this defaults to diffing against `main`
+          # regardless of the actual push — a release branch cut to match
+          # main (the normal case) then always looks like "no changes" and
+          # deploy-prod silently no-ops. Diff against the push's own
+          # before/after range instead so a real push always registers.
+          base: ${{ github.event.before }}
           filters: |
             function:
               - 'supabase/functions/parse-email/**'
