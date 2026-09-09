@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
+import { KeyboardProvider } from "react-native-keyboard-controller";
 import { loadCachedLanguage } from "./src/i18n";
 import { AuthScreen } from "./src/screens/AuthScreen";
 import { RootNavigator } from "./src/navigation/RootNavigator";
@@ -39,20 +40,11 @@ export default function App() {
     );
   }
 
-  if (!session) {
-    return (
-      <>
-        <AuthScreen />
-        <StatusBar style="auto" />
-      </>
-    );
-  }
-
   return (
-    <>
-      <RootNavigator />
+    <KeyboardProvider>
+      {session ? <RootNavigator /> : <AuthScreen />}
       <StatusBar style="auto" />
-    </>
+    </KeyboardProvider>
   );
 }
 
