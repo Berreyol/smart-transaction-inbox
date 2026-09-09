@@ -14,20 +14,24 @@ import { sendExpoPushNotification } from "./notifications.ts";
 import type { ProfileRow } from "./identifyUser.ts";
 
 /**
- * GETs an already-verified-genuine (see isGenuineGoogleForwardingConfirmationUrl
- * in forwardingConfirmationParser.ts) Gmail forwarding confirmation
- * URL. That confirmation is a stateless bearer link — possession of it is
- * the proof of control over the destination address, no login/session
- * required — so a plain server-side GET completes it exactly as a browser
- * click would.
+ * Completes an already-verified-genuine (see isGenuineGoogleForwardingConfirmationUrl
+ * in forwardingConfirmationParser.ts) Gmail forwarding confirmation URL.
+ * Visiting the URL itself only loads a page with a "Confirm" button — that
+ * button is a self-submitting form (`<form action="" method="post">`, no
+ * named fields), so completing it server-side means POSTing an empty body
+ * back to the same URL, not GETting it. That confirmation is a stateless
+ * bearer action — possession of the URL is the proof of control over the
+ * destination address, no login/session required — so this replicates
+ * exactly what clicking the button does.
  */
 async function attemptAutoConfirmForwarding(url: string): Promise<{ ok: boolean; error: string | null }> {
   try {
     const res = await fetch(url, {
-      method: "GET",
+      method: "POST",
       headers: {
         "User-Agent":
           "Mozilla/5.0 (compatible; BerryCashForwardingConfirm/1.0; +https://github.com/Berreyol/smart-transaction-inbox)",
+        "Content-Type": "application/x-www-form-urlencoded",
       },
     });
     if (res.ok) return { ok: true, error: null };

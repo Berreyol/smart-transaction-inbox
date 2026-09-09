@@ -42,9 +42,23 @@ Deno.test("isGenuineGoogleForwardingConfirmationUrl - accepts a real confirmatio
   assertEquals(isGenuineGoogleForwardingConfirmationUrl(REAL_CONFIRMATION_URL), true);
 });
 
+Deno.test("isGenuineGoogleForwardingConfirmationUrl - accepts mail-settings.google.com (Gmail's current sending host)", () => {
+  assertEquals(
+    isGenuineGoogleForwardingConfirmationUrl("https://mail-settings.google.com/mail/vf-abc"),
+    true,
+  );
+});
+
 Deno.test("isGenuineGoogleForwardingConfirmationUrl - rejects domain-confusion suffix trick", () => {
   assertEquals(
     isGenuineGoogleForwardingConfirmationUrl("https://mail.google.com.evil.com/mail/vf-abc"),
+    false,
+  );
+});
+
+Deno.test("isGenuineGoogleForwardingConfirmationUrl - rejects domain-confusion suffix trick on the settings host too", () => {
+  assertEquals(
+    isGenuineGoogleForwardingConfirmationUrl("https://mail-settings.google.com.evil.com/mail/vf-abc"),
     false,
   );
 });
