@@ -48,6 +48,15 @@ const RATE_LIMIT_MAX_PER_WINDOW = 5;
  * confirmation email Google sends) and paste it into a fabricated email
  * addressed at someone else's forwarding address. matchedBy is what closes
  * that gap.
+/**
+ * Returns null when `rawText` isn't a forwarding-confirmation email, so the
+ * caller falls through to transaction parsing instead. This is the only
+ * caller of parseForwardingConfirmationEmail, which is the single safety
+ * gate for this whole branch — it returns null for anything that doesn't
+ * contain a URL genuinely hosted on mail.google.com, regardless of how
+ * convincing the surrounding text looks (see its own comments and
+ * forwardingConfirmationParser.ts's header for the full
+ * SSRF/phishing threat model this closes off).
  */
 export async function handleForwardingConfirmation(
   supabase: SupabaseClient,
