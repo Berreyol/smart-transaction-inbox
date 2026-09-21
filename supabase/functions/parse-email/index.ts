@@ -86,7 +86,7 @@ Deno.serve(async (req: Request) => {
   if (!identified.ok) {
     return new Response("Internal error", { status: 500 });
   }
-  const { profile, forwardingToken, senderEmail } = identified;
+  const { profile, forwardingToken, senderEmail, matchedBy } = identified;
 
   if (!forwardingToken && !senderEmail) {
     return new Response("Missing sender", { status: 400 });
@@ -104,7 +104,7 @@ Deno.serve(async (req: Request) => {
   // Dispatch: handleForwardingConfirmation returns null for anything that
   // isn't Gmail's confirmation notice, in which case this falls through to
   // transaction parsing.
-  const confirmationResponse = await handleForwardingConfirmation(supabase, rawText, profile);
+  const confirmationResponse = await handleForwardingConfirmation(supabase, rawText, profile, matchedBy);
   if (confirmationResponse) return confirmationResponse;
 
   return handleTransactionEmail(supabase, payload, profile, rawText, htmlText);

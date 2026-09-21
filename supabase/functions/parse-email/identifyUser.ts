@@ -23,8 +23,24 @@ import type { PipedreamEmailEvent } from "./payload.ts";
 
 export type ProfileRow = { id: string; expo_push_token: string | null };
 
+/**
+ * Which lookup actually matched the profile. Distinct from `forwardingToken`
+ * being non-null: `forwardingToken` can be present but match no profile,
+ * falling through to the `from` match — callers that need to know the email
+ * was identified via the unspoofable path (the token, not the
+ * attacker-controlled From header) should check this rather than just
+ * truthiness of `forwardingToken`. See handleForwardingConfirmation.ts.
+ */
+export type ProfileMatchedBy = "token" | "from" | null;
+
 export type IdentifyUserResult =
-  | { ok: true; profile: ProfileRow | null; forwardingToken: string | null; senderEmail: string }
+  | {
+      ok: true;
+      profile: ProfileRow | null;
+      forwardingToken: string | null;
+      senderEmail: string;
+      matchedBy: ProfileMatchedBy;
+    }
   | { ok: false };
 
 /**
@@ -41,6 +57,7 @@ export async function identifyUser(
   const forwardingToken = xForwardedTo ? extractForwardingToken(extractEmail(xForwardedTo)) : null;
 
   let profile: ProfileRow | null = null;
+  let matchedBy: ProfileMatchedBy = null;
 
   if (forwardingToken) {
     const { data, error } = await supabase
@@ -54,6 +71,7 @@ export async function identifyUser(
       return { ok: false };
     }
     profile = data;
+    if (profile) matchedBy = "token";
   }
 
   if (!profile && senderEmail) {
@@ -68,7 +86,8 @@ export async function identifyUser(
       return { ok: false };
     }
     profile = data;
+    if (profile) matchedBy = "from";
   }
 
-  return { ok: true, profile, forwardingToken, senderEmail };
+  return { ok: true, profile, forwardingToken, senderEmail, matchedBy };
 }

@@ -15,18 +15,18 @@ import {
   parseForwardingConfirmationEmail,
 } from "./forwardingConfirmationParser.ts";
 
-const REAL_CONFIRMATION_URL =
-  "https://mail.google.com/mail/vf-%5BANGjdJ-6KGoFdmUFZP_ExjejgTbQr0mJO8qZLzqiyi7X5oDhZTYJYQb3WYo5PxLi6z5ON9ZAPXZQSqVwz8R8H7P5G6n09TFQhBZbkYbphwBKVG6xL_hc9xpoq-wT1RQ%5D-3tEenYjQdVmINN-83QpaonYYZlk";
+const SAMPLE_CONFIRMATION_URL =
+  "https://mail.google.com/mail/vf-sample_placeholder_token_not_a_real_link_00000000000000";
 
-const SAMPLE_EMAIL = `berrytransactions@gmail.com has requested to automatically forward
+const SAMPLE_EMAIL = `someone@gmail.com has requested to automatically forward
 mail to your email
 address emnnxqv0vgo9qma+asd12312asd@upload.pipedream.net.
 
-To allow berrytransactions@gmail.com to automatically forward mail to
+To allow someone@gmail.com to automatically forward mail to
 your address,
 please click the link below to confirm the request:
 
-${REAL_CONFIRMATION_URL}
+${SAMPLE_CONFIRMATION_URL}
 
 If you click the link and it appears to be broken, please copy and paste it
 into a new browser window.
@@ -38,8 +38,8 @@ Thanks for using Gmail.
 // isGenuineGoogleForwardingConfirmationUrl()
 // ----------------------------------------------------------------------------
 
-Deno.test("isGenuineGoogleForwardingConfirmationUrl - accepts a real confirmation URL", () => {
-  assertEquals(isGenuineGoogleForwardingConfirmationUrl(REAL_CONFIRMATION_URL), true);
+Deno.test("isGenuineGoogleForwardingConfirmationUrl - accepts a genuine confirmation URL", () => {
+  assertEquals(isGenuineGoogleForwardingConfirmationUrl(SAMPLE_CONFIRMATION_URL), true);
 });
 
 Deno.test("isGenuineGoogleForwardingConfirmationUrl - accepts mail-settings.google.com (Gmail's current sending host)", () => {
@@ -113,11 +113,11 @@ Deno.test("extractForwardingToken - returns null when there's no +tag", () => {
 // parseForwardingConfirmationEmail()
 // ----------------------------------------------------------------------------
 
-Deno.test("parseForwardingConfirmationEmail - extracts source email, token, and URL from a real email", () => {
+Deno.test("parseForwardingConfirmationEmail - extracts source email, token, and URL from a sample email", () => {
   assertEquals(parseForwardingConfirmationEmail(SAMPLE_EMAIL), {
-    sourceEmail: "berrytransactions@gmail.com",
+    sourceEmail: "someone@gmail.com",
     forwardingToken: "asd12312asd",
-    confirmationUrl: REAL_CONFIRMATION_URL,
+    confirmationUrl: SAMPLE_CONFIRMATION_URL,
   });
 });
 
@@ -126,7 +126,7 @@ Deno.test("parseForwardingConfirmationEmail - returns null when there's no confi
 });
 
 Deno.test("parseForwardingConfirmationEmail - returns null when the embedded URL isn't genuinely Google's", () => {
-  const spoofed = SAMPLE_EMAIL.replace(REAL_CONFIRMATION_URL, "https://evil-phishing-site.com/steal");
+  const spoofed = SAMPLE_EMAIL.replace(SAMPLE_CONFIRMATION_URL, "https://evil-phishing-site.com/steal");
   assertEquals(parseForwardingConfirmationEmail(spoofed), null);
 });
 
@@ -139,6 +139,6 @@ Deno.test("parseForwardingConfirmationEmail - still extracts a genuine URL even 
     "wants to forward",
   );
   const result = parseForwardingConfirmationEmail(tampered);
-  assertEquals(result?.confirmationUrl, REAL_CONFIRMATION_URL);
+  assertEquals(result?.confirmationUrl, SAMPLE_CONFIRMATION_URL);
   assertEquals(result?.sourceEmail, null);
 });
